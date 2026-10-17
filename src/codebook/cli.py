@@ -172,7 +172,9 @@ def run_eval(partners: str = typer.Option("glove,w2v,persona-mirror,persona-leap
              conditions: str = typer.Option("cold,warm,swap"),
              workers: int = typer.Option(6),
              ai: str = typer.Option("codex", help="AI clue-giver for plain/handover"),
-             skip_train: bool = typer.Option(False, help="Reuse the partner memories already built")) -> None:
+             skip_train: bool = typer.Option(False, help="Reuse the partner memories already built"),
+             run: str = typer.Option(None, "--run", help="Append to this run id instead of starting a new one"),
+             snapshots: str = typer.Option("", help="Comma-separated game counts to snapshot during training")) -> None:
     """Train each partner's memory, then test every set-up on the same unseen boards."""
     from concurrent.futures import ProcessPoolExecutor  # noqa: PLC0415
 
@@ -182,19 +184,22 @@ def run_eval(partners: str = typer.Option("glove,w2v,persona-mirror,persona-leap
     memory.require_population()
     pids = [p.strip() for p in partners.split(",") if p.strip()]
     conds = [c.strip() for c in conditions.split(",") if c.strip()]
-    run_id = E.new_run_id()
+    snaps = [int(s) for s in snapshots.split(",") if s.strip()]
+    run_id = run or E.new_run_id()
     run_dir = settings.results_dir / "runs" / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
     plan = {"run": run_id, "partners": pids, "conditions": conds, "train": train_games, "test": test_games,
             "train_seeds": [E.TRAIN_SEED0, E.TRAIN_SEED0 + train_games - 1],
-            "test_seeds": [E.TEST_SEED0, E.TEST_SEED0 + test_games - 1], "ai": ai, "argv": sys.argv[1:]}
-    (run_dir / "plan.json").write_text(json.dumps(plan, indent=1))
+            "test_seeds": [E.TEST_SEED0, E.TEST_SEED0 + test_games - 1], "ai": ai, "snapshots": snaps,
+            "skip_train": skip_train, "argv": sys.argv[1:]}
+    with (run_dir / "plan.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(plan) + "\n")
     typer.echo(f"run {run_id}: {plan}")
     sink = run_dir / "games.jsonl"
     if not skip_train:
         needed = sorted(set(pids) | {E.SWAPS[p] for p in pids if "swap" in conds})
         with ProcessPoolExecutor(max_workers=min(len(needed), workers)) as pool:
-            futures = {pool.submit(E.train_partner, pid, train_games): pid for pid in needed}
+            futures = {pool.submit(E.train_partner, pid, train_games, snapshots=snaps): pid for pid in needed}
             for fut, pid in futures.items():
                 rows = fut.result()
                 with sink.open("a", encoding="utf-8") as fh:
@@ -207,6 +212,35 @@ def run_eval(partners: str = typer.Option("glove,w2v,persona-mirror,persona-leap
     summary = E.summarize(rows)
     (run_dir / "summary.json").write_text(json.dumps(summary, indent=1))
     typer.echo(json.dumps(summary, indent=1))
+
+
+@app.command()
+def replay(partner: str = typer.Option("glove"), first: int = typer.Option(6000), games: int = typer.Option(20),
+           memory_of: str = typer.Option("own", "--memory")) -> None:
+    """Play frozen-memory games and print a fingerprint of every clue, pick and outcome.
+
+    Run it, restart FalkorDB (`docker compose restart`), run it again in a new process: the same
+    fingerprint means the partner's memory came back from FalkorDB, not from this process."""
+    import hashlib  # noqa: PLC0415
+
+    from codebook import evaluate as E  # noqa: PLC0415
+
+    if memory_of not in ("own", "everyone"):
+        typer.echo("error: --memory must be own or everyone", err=True)
+        raise typer.Exit(2)
+    _, memory = _memory()
+    if memory_of == "own":
+        info = memory.info(partner)
+        typer.echo(f"memory {info.key}: {info.games} games, {info.turns} clues, {info.learned_words} links "
+                   f"reweighted, style {info.style.as_dict()}")
+    condition = "warm" if memory_of == "own" else "cold"
+    rows = E.play_test_games(partner, condition, list(range(first, first + games)))
+    transcript = [[r["seed"], r["turns"], r["won"], [[c["clue"], c["count"], c["guesses"]] for c in r["clues"]]]
+                  for r in sorted(rows, key=lambda r: r["seed"])]
+    digest = hashlib.sha256(json.dumps(transcript, sort_keys=True).encode()).hexdigest()
+    for seed, turns, won, _ in transcript:
+        typer.echo(f"  board {seed}: {'won' if won else 'lost'} in {turns} turns")
+    typer.echo(f"fingerprint {digest[:16]} over {len(transcript)} games")
 
 
 @app.command()

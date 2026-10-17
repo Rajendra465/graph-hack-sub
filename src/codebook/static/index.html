@@ -242,7 +242,7 @@ async function showMemory(pid) {
   try {
     const m = await api('/api/memory/' + encodeURIComponent(pid));
     const max = Math.max(6, ...Object.values(m.style).map(Math.abs));
-    const bars = ['direct', 'reverse', 'chain', 'shared'].map(k => `<span>${k}</span><div class="bar"><i style="width:${Math.max(0, m.style[k]) / max * 100}%"></i><s style="left:${DEFAULT_STYLE[k] / max * 100}%"></s></div><span class="m">${m.style[k].toFixed(2)}</span>`).join('');
+    const bars = ['direct', 'reverse', 'chain', 'shared'].map(k => `<span>${k}</span><div class="bar"><i style="width:${Math.max(0, m.style[k] ?? 0) / max * 100}%"></i><s style="left:${DEFAULT_STYLE[k] / max * 100}%"></s></div><span class="m">${(m.style[k] ?? 0).toFixed(2)}</span>`).join('');
     $('tab-memory').innerHTML = `
       <div class="stats"><div class="stat"><b>${m.games}</b><span>games</span></div><div class="stat"><b>${m.turns}</b><span>clues</span></div>
       <div class="stat"><b>${m.learned_links}</b><span>links reweighted</span></div><div class="stat"><b>${m.mb ?? '–'}</b><span>MB in FalkorDB</span></div></div>

@@ -49,6 +49,9 @@ class Setup:
 
 
 def setup_for(condition: str, pid: str, *, ai: str = "codex") -> Setup:
+    if condition.startswith("warm@"):  # a snapshot of this partner's memory after N training games
+        snap = f"{pid}-at{int(condition.split('@', 1)[1])}"
+        return Setup(condition, keys.partner_key(snap), snap)
     if condition == "cold":
         return Setup("cold", keys.POPULATION, "everyone")
     if condition == "warm":
@@ -70,8 +73,11 @@ def _memory() -> tuple[config.Settings, Memory]:
     return settings, Memory(db)
 
 
-def train_partner(pid: str, games: int, *, fresh: bool = True, log: Callable[[str], None] = print) -> list[dict]:
-    """Play `games` training boards with learning on. Returns one dict per game."""
+def train_partner(pid: str, games: int, *, fresh: bool = True, log: Callable[[str], None] = print,
+                  snapshots: Sequence[int] = ()) -> list[dict]:
+    """Play `games` training boards with learning on. Returns one dict per game.
+
+    `snapshots`: after these game counts, GRAPH.COPY the memory to `<pid>-at<N>` (a learning curve)."""
     settings, memory = _memory()
     spec = make_partner(pid, settings=settings, memory=memory)
     key = memory.reset_partner(pid) if fresh else memory.ensure_partner(pid)
@@ -88,6 +94,8 @@ def train_partner(pid: str, games: int, *, fresh: bool = True, log: Callable[[st
         out.append(row)
         log(f"[train {pid}] game {i + 1}/{games} seed {seed}: {result.turns} turns, won={result.won}, "
             f"style={model.style.as_dict()}")
+        if i + 1 in snapshots:
+            memory.copy_partner(pid, f"{pid}-at{i + 1}")
     return out
 
 
@@ -235,10 +243,12 @@ def report(rows: Sequence[dict], *, title: str, source: str) -> str:
     for pid in sorted({p for p, _ in g}):
         lines += [f"## {pid}", "", "| Set-up | Boards | Turns to finish | Games won | Bomb hits | Clean clues |",
                   "|---|---|---|---|---|---|"]
-        for cond in ("plain", "cold", "warm", "swap", "handover"):
+        snaps = sorted((c for p, c in g if p == pid and c.startswith("warm@")), key=lambda c: int(c[5:]))
+        for cond in ("plain", "cold", *snaps, "warm", "swap", "handover"):
             m = metrics(g.get((pid, cond), []))
             if m:
-                lines.append(f"| {LABELS[cond]} | {m['games']} | {m['mean_turns']:.2f} | {m['win_rate']:.0%} | "
+                label = LABELS.get(cond) or f"Your memory after {cond[5:]} games"
+                lines.append(f"| {label} | {m['games']} | {m['mean_turns']:.2f} | {m['win_rate']:.0%} | "
                              f"{m['assassin_rate']:.0%} | {m['clean_clue_rate']:.0%} |")
         for a, b in (("warm", "cold"), ("warm", "swap"), ("handover", "plain")):
             if g.get((pid, a)) and g.get((pid, b)):

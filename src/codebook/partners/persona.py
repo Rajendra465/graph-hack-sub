@@ -59,20 +59,22 @@ def partner(pid: str, memory) -> PartnerSpec:
     class PersonaGuesser(Guesser):
         def __init__(self):
             super().__init__()
-            self.words, self.clue, self.left = [], "", 0
+            self.words, self.clue, self.left, self.cache = [], "", 0, {}
 
         def set_board(self, words):
             self.words = words
 
         def set_clue(self, clue, num):
-            self.clue, self.left = clue.lower(), int(num)
+            self.clue, self.left, self.cache = clue.lower(), int(num), {}
 
         def keep_guessing(self):
             return self.left > 0
 
         def get_answer(self):
             live = [w.lower() for w in self.words if not w.startswith("*")]
-            strengths = memory.clue_strengths(keys.POPULATION, self.clue, live)
+            if not set(live) <= set(self.cache):  # links for this clue, read once per clue
+                self.cache = memory.clue_strengths(keys.POPULATION, self.clue, live)
+            strengths = self.cache
             pull = model.pull(np.array([strengths[w] for w in live], dtype=float), live)
             rng = np.random.default_rng(zlib.crc32(f"{pid}:{self.clue}:{','.join(sorted(live))}".encode()))
             pull = pull + persona.noise * rng.gumbel(size=len(live))
