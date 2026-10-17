@@ -85,9 +85,14 @@ On 200 boards each partner never saw (everyone's memory here is ConceptNet 5.7):
 | planted two-step jumper | 6.7 | **6.4** | 7.2 |
 
 A partner's own memory beat everyone's for three of four partners, and beat the wrong partner's memory for the
-same three (paired by board, 95% intervals below zero). GloVe is the honest exception: no significant difference.
-A quarter of the bots' picks have no link to the clue in everyone's memory at all, which is a ceiling for any
-word-association model of an embedding.
+same three (paired by board, 95% intervals below zero), and the more practice games the memory had seen (0, 5, 10,
+20), the better those three played. GloVe is the honest exception: no significant difference. A quarter of the
+bots' picks have no link to the clue in everyone's memory at all, which is a ceiling for any word-association model
+of an embedding.
+
+When Claude Sonnet gave the clues to the GloVe bot, it finished in 14.5 turns alone and 13.7 turns choosing from
+GloVe's memory, with bomb hits falling from 40% to 22%. On 40 boards that isn't significant, so the handover promise
+is the one we didn't keep. Score: **3 of 4 promises kept**.
 
 ## Five things we learned about FalkorDB 6.0.2
 

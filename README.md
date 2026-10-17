@@ -10,8 +10,10 @@ anything that speaks MCP) through tools, never through database credentials.
 
 Graph Hacks 2026, **Track 02: Agent Memory and Coordination**.
 
-> Results: see [Results](#results). The evaluation was written down and committed before the first test
-> run ([EVAL.md](EVAL.md)); every promise is reported, kept or not.
+> **Results: 3 of 4 pre-registered promises kept.** On 200 boards it never saw, a partner's own memory beat
+> everyone's memory and the wrong partner's memory for three of four partners (word2vec bot: bomb hits 32% → 21%).
+> GloVe gained nothing significant, and the handover to another AI pointed the right way but wasn't significant on
+> 40 boards. Details and every game: [Results](#results).
 
 ![The live view: a game against the word2vec bot with its own memory, and every Cypher statement FalkorDB ran](docs/img/live-view.png)
 
@@ -205,33 +207,57 @@ boards (seeds 1000-1019) and are tested on boards they never saw (6000-6199), wi
 
 ## Results
 
-Run `final-20261017-1941-v2` (`scripts/final_run.sh`; every stage's commit is stamped in
-`results/runs/<run>/plan.jsonl`; every game is in `results/runs/<run>/games.jsonl`). Everyone's memory:
-**ConceptNet 5.7** (SWOW-EN18 needs a licence form; the code supports both). 200 test boards per set-up
-(seeds 6000-6199) that no partner saw in training; memories frozen. Turns to finish, lower is better; a lost
-game counts 25 (the engine's rule). Differences are paired by board with a 95% bootstrap interval; "better" means
-the whole interval is below zero. Full report: [`results/final-20261017-1941-v2.md`](results/final-20261017-1941-v2.md).
+**3 of 4 pre-registered promises kept.** Run `final-20261017-1941-v2` (`scripts/final_run.sh`; each stage's
+commit is stamped in `results/runs/<run>/plan.jsonl`, and every game is in `results/runs/<run>/games.jsonl`).
+Everyone's memory: **ConceptNet 5.7** (SWOW-EN18 needs a licence form; the code supports both). Test boards
+(seeds 6000-6199) were never seen in training; memories frozen. Turns to finish, lower is better; a lost game
+counts 25 (the engine's rule). Differences are paired by board with a 95% bootstrap interval; "better" means the
+whole interval is below zero. Full report: [`results/final-20261017-1941-v2.md`](results/final-20261017-1941-v2.md).
 
-| Partner | Everyone's memory | Your memory | Wrong memory | Yours vs everyone's | Yours vs wrong |
-|---|---|---|---|---|---|
-| word2vec bot (competition) | 15.55 turns, 33% bomb | **14.39, 21% bomb** | 15.31 (GloVe's) | **−1.16 [−2.23, −0.07] better** | **−0.92 [−1.72, −0.16] better** |
-| GloVe bot (competition) | 15.75, 35% bomb | 15.64, 32% bomb | 15.02 (word2vec's) | −0.11 [−1.08, +0.87] | +0.63 [−0.12, +1.36] |
-| Test partner A (planted: backwards links) | 6.60, 1% bomb | **5.63, 0% bomb** | 6.93 (B's) | **−0.98 [−1.28, −0.74] better** | **−1.30 [−1.87, −0.81] better** |
-| Test partner B (planted: two-step chains) | 6.66, 0.5% bomb | **6.36, 0.5% bomb** | 7.19 (A's) | **−0.30 [−0.56, −0.03] better** | **−0.83 [−1.43, −0.26] better** |
+| Partner | Boards | Everyone's memory | Your memory | Wrong memory | Yours vs everyone's | Yours vs wrong |
+|---|---|---|---|---|---|---|
+| word2vec bot (competition) | 200 | 15.55 turns, 32% bomb | **14.39, 21% bomb** | 15.31 (GloVe's) | **−1.16 [−2.23, −0.07] better** | **−0.92 [−1.72, −0.16] better** |
+| GloVe bot (competition) | 200 | 15.74, 34% bomb | 15.64, 32% bomb | 15.02 (word2vec's) | −0.10 [−1.08, +0.87] | +0.62 [−0.12, +1.36] |
+| Test partner A (planted: backwards links) | 200 | 6.60, 1% bomb | **5.62, 0% bomb** | 6.92 (B's) | **−0.97 [−1.27, −0.73] better** | **−1.30 [−1.86, −0.81] better** |
+| Test partner B (planted: two-step chains) | 200 | 6.66, 0% bomb | **6.36, 0% bomb** | 7.18 (A's) | **−0.29 [−0.56, −0.03] better** | **−0.82 [−1.43, −0.26] better** |
+| Claude Haiku | 40 | 10.47, 12% bomb | 9.22, 5% bomb | 9.88 (GloVe's) | −1.25 [−3.52, +0.90] | −0.65 [−1.90, +0.55] |
+
+**The more games together, the better it plays.** The same 200 boards, with the memory after 0, 5, 10 and 20
+practice games (snapshots taken with `GRAPH.COPY`):
+
+| Partner | 0 | 5 | 10 | 20 |
+|---|---|---|---|---|
+| word2vec bot | 15.55 | 14.81 | 14.75 | **14.39** |
+| Test partner A | 6.60 | 6.24 | 5.99 | **5.62** |
+| Test partner B | 6.66 | 6.50 | 6.48 | **6.36** |
+| GloVe bot | 15.74 | 15.45 | 15.51 | 15.64 |
+
+**Another AI giving the clues** (Claude Sonnet, partner GloVe, 40 boards): alone, 14.47 turns, 40% bomb, 60%
+won; choosing from GloVe's memory (the handover), **13.65 turns, 22% bomb, 78% won**. That difference
+(−0.82 [−3.93, +2.25]) is not significant on 40 boards, so promise 3 is not kept. In the handover, 104 of 376
+clues (28%) were Codebook's own suggestion, played when Sonnet's proposal was blocked for the bomb or rejected
+three times; the plain AI's 263 clues were all its own.
+
+| Promise (written in [EVAL.md](EVAL.md) before testing) | Result |
+|---|---|
+| 1. Your memory beats everyone's memory (either competition bot) | **Kept**: word2vec −1.16 turns |
+| 2. Your memory beats the wrong memory (either competition bot) | **Kept**: word2vec −0.92 turns |
+| 3. The handover beats the same AI alone (GloVe) | **Not kept**: −0.82 turns, interval crosses zero |
+| 4. No more bomb hits than the plain AI (GloVe, same 40 boards) | **Kept**: 35% vs 40% |
 
 What this says, plainly:
 
-- **A partner's own memory beat everyone's memory for three of four partners.** For the word2vec bot it cut bomb
-  hits from 33% to 21% and won 78% of games instead of 68%.
-- **The memory is about the partner.** Each memory beat the wrong partner's memory for word2vec and both planted
-  partners.
-- **GloVe is the exception.** Its own memory made no significant difference, and it did slightly (not
-  significantly) better with word2vec's memory. In practice games, 25% of GloVe's picks and 23% of word2vec's had
-  no link to the clue at all in everyone's memory (1-2% for the planted partners), so part of what drives an
-  embedding is out of reach of a word-association graph.
-
-_Learning curve, Claude as a partner, the AI clue-giver set-ups and the promise count: being filled in from the
-same run._
+- **A partner's own memory beat everyone's memory, and beat the wrong partner's memory, for three of four bot and
+  planted partners**; for the word2vec bot it cut bomb hits from 32% to 21% and won 78% of games instead of 68%.
+- **GloVe is the exception.** Its own memory made no significant difference, and it did slightly (not significantly)
+  better with word2vec's. In practice games, 25% of GloVe's picks and 23% of word2vec's had no link to the clue at
+  all in everyone's memory (1-2% for the planted partners), so part of what drives an embedding is out of reach of a
+  word-association graph.
+- **Claude and the handover point the right way but need more boards**: 40 boards per set-up (each turn calls a
+  model) are too few for a significant difference.
+- **We re-ran the benchmark once**: a code review of our own harness found a hidden forfeit rule and an AI set-up
+  that could borrow Codebook's clue. Both are fixed and written up in [EVAL.md](EVAL.md), amendment 2; the first
+  run's games are kept in `results/runs/final-20261017-1806/`.
 
 ## AI use
 

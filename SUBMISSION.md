@@ -30,7 +30,11 @@ reweights the partner's own graph. After each game the diary is consolidated int
 practice games deliberately probe how the partner thinks.
 
 Evaluation was written down and committed before the first test, with a stop rule. On boards the partners never
-saw, scored by the unmodified Codenames AI Competition engine: [results sentence from the final run].
+saw, scored by the unmodified Codenames AI Competition engine, 3 of 4 promises were kept: a partner's own memory
+beat everyone's memory and beat the wrong partner's memory for three of four partners (the word2vec bot's bomb hits
+fell from 32% to 21%), and it improved steadily over 5, 10 and 20 practice games. GloVe gained nothing significant,
+and the handover to another AI (Claude Sonnet) pointed the right way (bomb hits 40% to 22%) but was not significant
+on 40 boards. Every game is in the repository.
 
 What only FalkorDB made easy: each partner's memory is its own graph key (copied in 0.7 s, exported to an 11 MB
 file and restored on another server), locked to one database user with an ACL selector, traversed in

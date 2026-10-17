@@ -1,0 +1,69 @@
+{
+ "table": {
+  "glove/warm@10": {
+   "games": 200,
+   "mean_turns": 15.775,
+   "win_rate": 0.665,
+   "assassin_rate": 0.295,
+   "clean_clue_rate": 0.634,
+   "team_words_per_clue": 0.677
+  },
+  "glove/warm@5": {
+   "games": 200,
+   "mean_turns": 15.75,
+   "win_rate": 0.665,
+   "assassin_rate": 0.29,
+   "clean_clue_rate": 0.639,
+   "team_words_per_clue": 0.678
+  },
+  "persona-leaper/warm@10": {
+   "games": 200,
+   "mean_turns": 6.645,
+   "win_rate": 0.985,
+   "assassin_rate": 0.005,
+   "clean_clue_rate": 0.928,
+   "team_words_per_clue": 1.253
+  },
+  "persona-leaper/warm@5": {
+   "games": 200,
+   "mean_turns": 6.675,
+   "win_rate": 0.98,
+   "assassin_rate": 0.01,
+   "clean_clue_rate": 0.92,
+   "team_words_per_clue": 1.267
+  },
+  "persona-mirror/warm@10": {
+   "games": 200,
+   "mean_turns": 5.99,
+   "win_rate": 0.995,
+   "assassin_rate": 0.005,
+   "clean_clue_rate": 0.963,
+   "team_words_per_clue": 1.357
+  },
+  "persona-mirror/warm@5": {
+   "games": 200,
+   "mean_turns": 6.235,
+   "win_rate": 0.99,
+   "assassin_rate": 0.01,
+   "clean_clue_rate": 0.943,
+   "team_words_per_clue": 1.324
+  },
+  "w2v/warm@10": {
+   "games": 200,
+   "mean_turns": 14.815,
+   "win_rate": 0.745,
+   "assassin_rate": 0.245,
+   "clean_clue_rate": 0.635,
+   "team_words_per_clue": 0.668
+  },
+  "w2v/warm@5": {
+   "games": 200,
+   "mean_turns": 14.87,
+   "win_rate": 0.755,
+   "assassin_rate": 0.235,
+   "clean_clue_rate": 0.627,
+   "team_words_per_clue": 0.663
+  }
+ },
+ "comparisons": {}
+}

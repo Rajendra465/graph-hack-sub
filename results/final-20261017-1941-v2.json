@@ -1,0 +1,394 @@
+{
+ "run": "final-20261017-1941-v2",
+ "source": "ConceptNet 5.7.0",
+ "table": {
+  "claude/cold": {
+   "games": 40,
+   "mean_turns": 10.475,
+   "win_rate": 0.875,
+   "assassin_rate": 0.125,
+   "clean_clue_rate": 0.723,
+   "team_words_per_clue": 0.924
+  },
+  "claude/swap": {
+   "games": 40,
+   "mean_turns": 9.875,
+   "win_rate": 0.95,
+   "assassin_rate": 0.05,
+   "clean_clue_rate": 0.834,
+   "team_words_per_clue": 0.876
+  },
+  "claude/warm": {
+   "games": 40,
+   "mean_turns": 9.225,
+   "win_rate": 0.95,
+   "assassin_rate": 0.05,
+   "clean_clue_rate": 0.829,
+   "team_words_per_clue": 0.948
+  },
+  "glove/cold": {
+   "games": 200,
+   "mean_turns": 15.745,
+   "win_rate": 0.655,
+   "assassin_rate": 0.345,
+   "clean_clue_rate": 0.514,
+   "team_words_per_clue": 0.69
+  },
+  "glove/handover": {
+   "games": 40,
+   "mean_turns": 13.65,
+   "win_rate": 0.775,
+   "assassin_rate": 0.225,
+   "clean_clue_rate": 0.612,
+   "team_words_per_clue": 0.742
+  },
+  "glove/plain": {
+   "games": 40,
+   "mean_turns": 14.475,
+   "win_rate": 0.6,
+   "assassin_rate": 0.4,
+   "clean_clue_rate": 0.293,
+   "team_words_per_clue": 0.989
+  },
+  "glove/swap": {
+   "games": 200,
+   "mean_turns": 15.015,
+   "win_rate": 0.73,
+   "assassin_rate": 0.265,
+   "clean_clue_rate": 0.629,
+   "team_words_per_clue": 0.67
+  },
+  "glove/warm": {
+   "games": 200,
+   "mean_turns": 15.64,
+   "win_rate": 0.68,
+   "assassin_rate": 0.315,
+   "clean_clue_rate": 0.631,
+   "team_words_per_clue": 0.674
+  },
+  "glove/warm@10": {
+   "games": 200,
+   "mean_turns": 15.51,
+   "win_rate": 0.71,
+   "assassin_rate": 0.29,
+   "clean_clue_rate": 0.625,
+   "team_words_per_clue": 0.664
+  },
+  "glove/warm@5": {
+   "games": 200,
+   "mean_turns": 15.445,
+   "win_rate": 0.7,
+   "assassin_rate": 0.295,
+   "clean_clue_rate": 0.633,
+   "team_words_per_clue": 0.672
+  },
+  "persona-leaper/cold": {
+   "games": 200,
+   "mean_turns": 6.655,
+   "win_rate": 0.995,
+   "assassin_rate": 0.005,
+   "clean_clue_rate": 0.934,
+   "team_words_per_clue": 1.217
+  },
+  "persona-leaper/swap": {
+   "games": 200,
+   "mean_turns": 7.185,
+   "win_rate": 0.955,
+   "assassin_rate": 0.045,
+   "clean_clue_rate": 0.833,
+   "team_words_per_clue": 1.258
+  },
+  "persona-leaper/warm": {
+   "games": 200,
+   "mean_turns": 6.36,
+   "win_rate": 0.995,
+   "assassin_rate": 0.005,
+   "clean_clue_rate": 0.923,
+   "team_words_per_clue": 1.277
+  },
+  "persona-leaper/warm@10": {
+   "games": 200,
+   "mean_turns": 6.48,
+   "win_rate": 0.995,
+   "assassin_rate": 0.005,
+   "clean_clue_rate": 0.929,
+   "team_words_per_clue": 1.252
+  },
+  "persona-leaper/warm@5": {
+   "games": 200,
+   "mean_turns": 6.505,
+   "win_rate": 0.99,
+   "assassin_rate": 0.01,
+   "clean_clue_rate": 0.92,
+   "team_words_per_clue": 1.266
+  },
+  "persona-mirror/cold": {
+   "games": 200,
+   "mean_turns": 6.6,
+   "win_rate": 0.99,
+   "assassin_rate": 0.01,
+   "clean_clue_rate": 0.955,
+   "team_words_per_clue": 1.248
+  },
+  "persona-mirror/swap": {
+   "games": 200,
+   "mean_turns": 6.925,
+   "win_rate": 0.96,
+   "assassin_rate": 0.04,
+   "clean_clue_rate": 0.918,
+   "team_words_per_clue": 1.3
+  },
+  "persona-mirror/warm": {
+   "games": 200,
+   "mean_turns": 5.625,
+   "win_rate": 1.0,
+   "assassin_rate": 0.0,
+   "clean_clue_rate": 0.967,
+   "team_words_per_clue": 1.422
+  },
+  "persona-mirror/warm@10": {
+   "games": 200,
+   "mean_turns": 5.99,
+   "win_rate": 0.995,
+   "assassin_rate": 0.005,
+   "clean_clue_rate": 0.963,
+   "team_words_per_clue": 1.357
+  },
+  "persona-mirror/warm@5": {
+   "games": 200,
+   "mean_turns": 6.235,
+   "win_rate": 0.99,
+   "assassin_rate": 0.01,
+   "clean_clue_rate": 0.943,
+   "team_words_per_clue": 1.324
+  },
+  "w2v/cold": {
+   "games": 200,
+   "mean_turns": 15.55,
+   "win_rate": 0.675,
+   "assassin_rate": 0.325,
+   "clean_clue_rate": 0.515,
+   "team_words_per_clue": 0.689
+  },
+  "w2v/swap": {
+   "games": 200,
+   "mean_turns": 15.31,
+   "win_rate": 0.725,
+   "assassin_rate": 0.275,
+   "clean_clue_rate": 0.62,
+   "team_words_per_clue": 0.663
+  },
+  "w2v/warm": {
+   "games": 200,
+   "mean_turns": 14.39,
+   "win_rate": 0.78,
+   "assassin_rate": 0.21,
+   "clean_clue_rate": 0.634,
+   "team_words_per_clue": 0.672
+  },
+  "w2v/warm@10": {
+   "games": 200,
+   "mean_turns": 14.75,
+   "win_rate": 0.75,
+   "assassin_rate": 0.245,
+   "clean_clue_rate": 0.636,
+   "team_words_per_clue": 0.668
+  },
+  "w2v/warm@5": {
+   "games": 200,
+   "mean_turns": 14.81,
+   "win_rate": 0.76,
+   "assassin_rate": 0.235,
+   "clean_clue_rate": 0.627,
+   "team_words_per_clue": 0.663
+  }
+ },
+ "comparisons": {
+  "claude: warm vs cold": {
+   "n": 40,
+   "mean": -1.25,
+   "ci95": [
+    -3.525,
+    0.9
+   ],
+   "a_better": false
+  },
+  "claude: warm vs swap": {
+   "n": 40,
+   "mean": -0.65,
+   "ci95": [
+    -1.9,
+    0.55
+   ],
+   "a_better": false
+  },
+  "glove: warm vs cold": {
+   "n": 200,
+   "mean": -0.105,
+   "ci95": [
+    -1.08,
+    0.87
+   ],
+   "a_better": false
+  },
+  "glove: warm vs swap": {
+   "n": 200,
+   "mean": 0.625,
+   "ci95": [
+    -0.115,
+    1.36
+   ],
+   "a_better": false
+  },
+  "glove: handover vs plain": {
+   "n": 40,
+   "mean": -0.825,
+   "ci95": [
+    -3.926,
+    2.25
+   ],
+   "a_better": false
+  },
+  "glove: handover vs cold": {
+   "n": 40,
+   "mean": -3.225,
+   "ci95": [
+    -5.675,
+    -0.875
+   ],
+   "a_better": true
+  },
+  "persona-leaper: warm vs cold": {
+   "n": 200,
+   "mean": -0.295,
+   "ci95": [
+    -0.56,
+    -0.03
+   ],
+   "a_better": true
+  },
+  "persona-leaper: warm vs swap": {
+   "n": 200,
+   "mean": -0.825,
+   "ci95": [
+    -1.43,
+    -0.26
+   ],
+   "a_better": true
+  },
+  "persona-mirror: warm vs cold": {
+   "n": 200,
+   "mean": -0.975,
+   "ci95": [
+    -1.275,
+    -0.735
+   ],
+   "a_better": true
+  },
+  "persona-mirror: warm vs swap": {
+   "n": 200,
+   "mean": -1.3,
+   "ci95": [
+    -1.865,
+    -0.81
+   ],
+   "a_better": true
+  },
+  "w2v: warm vs cold": {
+   "n": 200,
+   "mean": -1.16,
+   "ci95": [
+    -2.225,
+    -0.07
+   ],
+   "a_better": true
+  },
+  "w2v: warm vs swap": {
+   "n": 200,
+   "mean": -0.92,
+   "ci95": [
+    -1.72,
+    -0.16
+   ],
+   "a_better": true
+  }
+ },
+ "promises": [
+  {
+   "n": 1,
+   "promise": "Your memory beats everyone's memory",
+   "kept": true,
+   "evidence": {
+    "glove": {
+     "n": 200,
+     "mean": -0.105,
+     "ci95": [
+      -1.08,
+      0.87
+     ],
+     "a_better": false
+    },
+    "w2v": {
+     "n": 200,
+     "mean": -1.16,
+     "ci95": [
+      -2.225,
+      -0.07
+     ],
+     "a_better": true
+    }
+   }
+  },
+  {
+   "n": 2,
+   "promise": "Your memory beats the wrong memory",
+   "kept": true,
+   "evidence": {
+    "glove": {
+     "n": 200,
+     "mean": 0.625,
+     "ci95": [
+      -0.115,
+      1.36
+     ],
+     "a_better": false
+    },
+    "w2v": {
+     "n": 200,
+     "mean": -0.92,
+     "ci95": [
+      -1.72,
+      -0.16
+     ],
+     "a_better": true
+    }
+   }
+  },
+  {
+   "n": 3,
+   "promise": "The handover keeps the score (GloVe: AI + memory beats the same AI alone)",
+   "kept": false,
+   "evidence": {
+    "glove": {
+     "n": 40,
+     "mean": -0.825,
+     "ci95": [
+      -3.926,
+      2.25
+     ],
+     "a_better": false
+    }
+   }
+  },
+  {
+   "n": 4,
+   "promise": "No more bomb hits than the plain AI (GloVe, same boards)",
+   "kept": true,
+   "evidence": {
+    "your_memory_bomb_rate": 0.35,
+    "plain_ai_bomb_rate": 0.4,
+    "boards": 40
+   }
+  }
+ ]
+}
