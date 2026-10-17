@@ -72,6 +72,7 @@ class Session:
     allowed: Callable[[str], bool] = lambda _w: True
     chooser: Chooser | None = None
     chooser_name: str = ""
+    plain: bool = False  # the AI's own clue is used as-is: no graph suggestions, no block
     costs: Costs = field(default_factory=Costs)
     max_turns: int = 25
     on_event: Callable[[dict], None] | None = None
@@ -111,11 +112,15 @@ class Session:
         seed = zlib.crc32(f"{self.game_id}:{n}".encode())
         options = plan(self.board, table.rows, self.model, seed=seed, allowed=allowed, costs=self.costs)
         candidates: list[tuple[Option, dict, str]] = []
-        proposal = self.chooser(self.board, options[:10]) if self.chooser else None
+        proposal = self.chooser(self.board, [] if self.plain else options[:10]) if self.chooser else None
         if proposal:
             opt, strengths = self._evaluate_proposal(proposal, seed)
+            if opt is not None and self.plain:
+                return self._commit(n, opt, strengths, self.chooser_name or "ai", options, table.ms, forced=False)
             if opt is not None:
                 candidates.append((opt, strengths, self.chooser_name or "ai"))
+        if self.chooser and not candidates:
+            self._emit("fallback", turn=n, proposal=list(proposal) if proposal else None)
         candidates.extend((o, table.rows[o.clue], "codebook") for o in options)
         blocked: list[tuple[Block, Option, dict, str]] = []
         for opt, strengths, proposer in candidates:
@@ -153,13 +158,14 @@ class Session:
     # ---- internals ----
     def _evaluate_proposal(self, proposal: tuple[str, int], seed: int):
         clue, count = proposal[0].strip().lower(), int(proposal[1])
-        if not is_legal_clue(clue, self.board.all_words):
-            self._emit("proposal_rejected", clue=clue, reason="illegal clue")
+        if not is_legal_clue(clue, self.board.all_words) or not self.allowed(clue):
+            self._emit("proposal_rejected", clue=clue, reason="illegal clue or unknown to this partner")
             return None, {}
         strengths = self.memory.clue_strengths(self.read_key, clue, self.board.words)
         rng = np.random.default_rng(seed)
         gumbel = rng.gumbel(size=(self.costs.samples, len(self.board.words)))
-        options = evaluate(self.board, clue, strengths, self.model, gumbel, self.costs)
+        costs = replace(self.costs, max_count=9) if self.plain else self.costs
+        options = evaluate(self.board, clue, strengths, self.model, gumbel, costs)
         if not options:
             return None, {}
         count = max(1, min(count, len(options)))

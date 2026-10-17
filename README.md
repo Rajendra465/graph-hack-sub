@@ -152,7 +152,7 @@ gives an agent six tools: `list_partners`, `suggest_clues`, `check_clue`, `recor
 Written before the first test: [EVAL.md](EVAL.md). The unmodified Codenames AI Competition engine (MIT)
 deals every board from a seed and keeps the score; its files are checksummed in
 [`tests/unit/test_engine_unmodified.py`](tests/unit/test_engine_unmodified.py). Partners learn on training
-boards (seeds 1000-1019) and are tested on boards they never saw (5000+), with memories frozen.
+boards (seeds 1000-1019) and are tested on boards they never saw (6000-6199), with memories frozen.
 
 ## Results
 

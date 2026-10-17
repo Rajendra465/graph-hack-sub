@@ -3,6 +3,13 @@
 This file is committed before any test board is played with real word data. The git history
 shows its timestamp. Results are reported against it, including every promise that fails.
 
+## Amendment, 2026-10-17 17:20 IST (before any test run with real word data)
+
+The original test boards were seeds 5000-5199. While SWOW-EN18 was unavailable, pilot runs on the
+ConceptNet fallback used seeds 5000-5059 to tune the clue-giver (default sharpness, a shared-associates
+feature, no repeated clues). Tuning on those boards would leak into the final numbers, so the final test
+boards move to 6000-6199 and pilots use 8000+. Nothing else changes.
+
 ## Who keeps score
 
 The unmodified Codenames AI Competition engine (MIT, `src/codebook/engine/`, checksums in
@@ -13,8 +20,9 @@ the engine's own rule. Codebook never edits the engine's outcome.
 ## Boards
 
 - Training boards: seeds 1000-1019 (20 games per partner, learning on).
-- Test boards: seeds 5000-5199 (200 games) for the bot and planted partners; seeds 5000-5039
+- Test boards: seeds 6000-6199 (200 games) for the bot and planted partners; seeds 6000-6039
   (40 games) for set-ups that call an AI model on every turn. Memories are frozen during tests.
+- Pilot (tuning) boards: seeds 8000 and up. Pilots never use test boards.
 - Training and test seeds never overlap. Every set-up for a partner plays the same test boards.
 
 ## Partners (who guesses)
@@ -55,7 +63,7 @@ word), team words per clue. Differences are paired by board: mean of (A - B) ove
 3. **The handover keeps the score**: kept if, with the GloVe partner, the AI clue-giver using GloVe's
    memory (handover) beats the same AI without memory (plain AI) on turns.
 4. **No more bomb hits than the plain AI**: kept if, with the GloVe partner, Codebook with "your memory"
-   hits the bomb no more often than the plain AI on the same 40 boards.
+   hits the bomb no more often than the plain AI on the same 40 boards (seeds 6000-6039).
 
 **Stop rule.** If promise 1 fails for both competition bots, the partner-memory claim has failed; the
 README says so in its first paragraph, and the planted partners are reported as a control only.
@@ -63,7 +71,7 @@ README says so in its first paragraph, and the planted partners are reported as 
 ## Controls reported alongside (not promises)
 
 - Planted partners: is the learned style closer to the planted style than the default is (cosine), and
-  how many of the 25 planted favourite words are in the learned top 25?
+  how many of the 20 planted favourite words are in the learned top 20?
 - Persistence: after `docker compose restart`, a fresh process replays 20 "your memory" test games for
   GloVe and must reproduce the same clues and outcomes, with the memory read only from FalkorDB.
 - Removal: with FalkorDB stopped, every command exits with an error naming FalkorDB; nothing falls back.

@@ -6,7 +6,8 @@ Set-ups on the same held-out boards (the engine keeps the score; a loss counts 2
   swap      Codebook with another partner's memory - is the memory specific to the partner?
   plain     an AI clue-giver with no memory at all
   handover  another AI as clue-giver, choosing from this partner's memory
-Training boards use seeds 1000.., test boards 5000.. (disjoint). Test memories are frozen.
+Training boards use seeds 1000.., test boards 6000.., pilot tuning boards 8000.. (all disjoint).
+Test memories are frozen.
 """
 
 from __future__ import annotations
@@ -29,7 +30,8 @@ from codebook.partners import make_partner
 from codebook.session import Session
 
 TRAIN_SEED0 = 1000
-TEST_SEED0 = 5000
+TEST_SEED0 = 6000   # final test boards (amended from 5000, see EVAL.md)
+PILOT_SEED0 = 8000  # tuning boards for pilots; never used in the final run
 SWAPS = {"glove": "w2v", "w2v": "glove", "persona-mirror": "persona-leaper", "persona-leaper": "persona-mirror",
          "claude": "glove", "claude-sonnet": "glove", "codex": "glove"}
 CONDITIONS = ("cold", "warm", "swap", "plain", "handover")
@@ -104,7 +106,7 @@ def play_test_games(pid: str, condition: str, seeds: Sequence[int], ai: str = "c
         gid = f"{pid}-{condition}-{seed}"
         result, _ = play(lambda ev: Session(memory, setup.read_key, model, gid, seed, condition, ev,
                                             allowed=spec.knows, chooser=chooser, chooser_name=setup.chooser,
-                                            by=setup.chooser or "codebook"),
+                                            by=setup.chooser or "codebook", plain=condition == "plain"),
                          spec.guesser_class, seed, gid)
         out.append({"partner": pid, "condition": condition, "memory_of": setup.memory_of,
                     "clue_giver": setup.chooser or "codebook", **result.as_dict()})
@@ -183,3 +185,72 @@ def summarize(rows: Sequence[dict]) -> dict:
 
 def new_run_id() -> str:
     return time.strftime("%Y%m%d-%H%M%S") + f"-{random.randint(0, 0xffff):04x}"
+
+
+LABELS = {"plain": "Plain AI (no graph)", "cold": "Everyone's memory", "warm": "Your memory",
+          "swap": "Wrong memory", "handover": "Handover (another AI + your memory)"}
+BOTS = ("glove", "w2v")
+
+
+def _group(rows: Sequence[dict]) -> dict[tuple[str, str], list[dict]]:
+    groups: dict[tuple[str, str], list[dict]] = {}
+    for r in rows:
+        if r["condition"] != "train":
+            groups.setdefault((r["partner"], r["condition"]), []).append(r)
+    return groups
+
+
+def promises(rows: Sequence[dict]) -> list[dict]:
+    """The four promises from EVAL.md, each with its evidence and a kept/not-kept verdict."""
+    g = _group(rows)
+    out = []
+    for n, (a, b, text) in enumerate((("warm", "cold", "Your memory beats everyone's memory"),
+                                      ("warm", "swap", "Your memory beats the wrong memory")), start=1):
+        evidence = {p: paired_diff(g[(p, a)], g[(p, b)]) for p in BOTS if g.get((p, a)) and g.get((p, b))}
+        kept = any(d and d["a_better"] for d in evidence.values())
+        out.append({"n": n, "promise": text, "kept": kept, "evidence": evidence})
+    ho, pl = g.get(("glove", "handover"), []), g.get(("glove", "plain"), [])
+    d3 = paired_diff(ho, pl) if ho and pl else None
+    out.append({"n": 3, "promise": "The handover keeps the score (GloVe: AI + memory beats the same AI alone)",
+                "kept": bool(d3 and d3["a_better"]), "evidence": {"glove": d3}})
+    seeds = {r["seed"] for r in pl}
+    warm = [r for r in g.get(("glove", "warm"), []) if r["seed"] in seeds]
+    if warm and pl:
+        rate_w = sum(r["assassin"] for r in warm) / len(warm)
+        rate_p = sum(r["assassin"] for r in pl) / len(pl)
+        ev4 = {"your_memory_bomb_rate": round(rate_w, 3), "plain_ai_bomb_rate": round(rate_p, 3), "boards": len(pl)}
+        kept4 = rate_w <= rate_p
+    else:
+        ev4, kept4 = None, False
+    out.append({"n": 4, "promise": "No more bomb hits than the plain AI (GloVe, same boards)", "kept": kept4,
+                "evidence": ev4})
+    return out
+
+
+def report(rows: Sequence[dict], *, title: str, source: str) -> str:
+    """Markdown scorecard: one table per partner, comparisons, promises."""
+    g = _group(rows)
+    lines = [f"# {title}", "", f"Everyone's memory: {source}. Loss = 25 turns (engine rule). "
+             "Differences are paired by board, 95% bootstrap interval.", ""]
+    for pid in sorted({p for p, _ in g}):
+        lines += [f"## {pid}", "", "| Set-up | Boards | Turns to finish | Games won | Bomb hits | Clean clues |",
+                  "|---|---|---|---|---|---|"]
+        for cond in ("plain", "cold", "warm", "swap", "handover"):
+            m = metrics(g.get((pid, cond), []))
+            if m:
+                lines.append(f"| {LABELS[cond]} | {m['games']} | {m['mean_turns']:.2f} | {m['win_rate']:.0%} | "
+                             f"{m['assassin_rate']:.0%} | {m['clean_clue_rate']:.0%} |")
+        for a, b in (("warm", "cold"), ("warm", "swap"), ("handover", "plain")):
+            if g.get((pid, a)) and g.get((pid, b)):
+                d = paired_diff(g[(pid, a)], g[(pid, b)])
+                if d:
+                    verdict = "better" if d["a_better"] else ("worse" if d["ci95"][0] > 0 else "no clear difference")
+                    lines.append(f"\n{LABELS[a]} vs {LABELS[b].lower()}: {d['mean']:+.2f} turns "
+                                 f"[{d['ci95'][0]:+.2f}, {d['ci95'][1]:+.2f}] over {d['n']} boards: {verdict}.")
+        lines.append("")
+    ps = promises(rows)
+    lines += ["## Promises (from EVAL.md)", ""]
+    for p in ps:
+        lines.append(f"{p['n']}. {'KEPT' if p['kept'] else 'NOT KEPT'}: {p['promise']}")
+    lines += ["", f"**{sum(p['kept'] for p in ps)} / 4 kept.**", ""]
+    return "\n".join(lines)

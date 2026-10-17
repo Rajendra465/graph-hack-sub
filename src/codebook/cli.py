@@ -210,6 +210,26 @@ def run_eval(partners: str = typer.Option("glove,w2v,persona-mirror,persona-leap
 
 
 @app.command()
+def report(run: str = typer.Argument(..., help="Run id under results/runs/"),
+           title: str = typer.Option("Codebook results")) -> None:
+    """Write results/<run>.md: the scorecard and the four promises, from a run's game log."""
+    from codebook import evaluate as E  # noqa: PLC0415
+
+    settings = config.load()
+    run_dir = settings.results_dir / "runs" / run
+    rows = [json.loads(line) for line in (run_dir / "games.jsonl").read_text(encoding="utf-8").splitlines() if line]
+    _, memory = _memory()
+    src = memory.db.ro_query(keys.POPULATION, C.SOURCE_GET, name="source_get").records()
+    source = f"{src[0]['dataset']} {src[0]['version']}" if src else "unknown"
+    text = E.report(rows, title=title, source=source)
+    out = settings.results_dir / f"{run}.md"
+    out.write_text(text, encoding="utf-8")
+    (settings.results_dir / f"{run}.json").write_text(json.dumps(
+        {"run": run, "source": source, **E.summarize(rows), "promises": E.promises(rows)}, indent=1), encoding="utf-8")
+    typer.echo(text)
+
+
+@app.command()
 def ui(host: str = typer.Option(None), port: int = typer.Option(None)) -> None:
     """Open the live view: watch games, see every Cypher statement, or play as the guesser."""
     from codebook.web import serve  # noqa: PLC0415
