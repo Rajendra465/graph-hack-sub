@@ -17,7 +17,7 @@ import numpy as np
 from codebook.board import BoardView, is_legal_clue
 from codebook.memory import Memory, TurnRecord
 from codebook.model import PartnerModel
-from codebook.spymaster import Costs, Option, evaluate, plan
+from codebook.spymaster import Costs, Option, disagreement, evaluate, plan
 
 BLOCK_STRENGTH = 0.02
 BLOCK_P = 0.05
@@ -73,6 +73,7 @@ class Session:
     chooser: Chooser | None = None
     chooser_name: str = ""
     plain: bool = False  # the AI's own clue is used as-is: no graph suggestions, no block
+    explore: float = 0.0  # practice games: bonus for clues that reveal how this partner thinks
     costs: Costs = field(default_factory=Costs)
     max_turns: int = 25
     on_event: Callable[[dict], None] | None = None
@@ -111,6 +112,9 @@ class Session:
         table = self.memory.features(self.read_key, self.board, self.model, allowed=allowed)
         seed = zlib.crc32(f"{self.game_id}:{n}".encode())
         options = plan(self.board, table.rows, self.model, seed=seed, allowed=allowed, costs=self.costs)
+        if self.learn and self.explore > 0:
+            bonus = {o.clue: self.explore * disagreement(self.board, table.rows[o.clue]) for o in options}
+            options = sorted(options, key=lambda o: (-(o.value + bonus[o.clue]), o.count, o.clue))
         candidates: list[tuple[Option, dict, str]] = []
         proposal = self.chooser(self.board, [] if self.plain else options[:10]) if self.chooser else None
         if proposal:

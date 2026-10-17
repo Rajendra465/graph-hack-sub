@@ -83,3 +83,18 @@ def test_same_seed_and_memory_replay_the_same_game(population, test_settings):
                          spec.guesser_class, 5001, "r-5001")
         runs.append([(c.clue, c.count, c.guesses) for c in result.clues] + [result.turns])
     assert runs[0] == runs[1]
+
+
+def test_one_clue_reader_agrees_with_the_board_reader(population):
+    """clue_strengths (one clue) must see exactly the links features() (whole board) sees."""
+    memory = Memory(population)
+    words, key = board_for_seed(8003)
+    board = BoardView.from_harness(words, key)
+    table = memory.features(keys.POPULATION, board, memory.model(keys.POPULATION))
+    clues = sorted(table.rows)[:25]
+    assert clues
+    for clue in clues:
+        one = memory.clue_strengths(keys.POPULATION, clue, board.words)
+        for word in board.words:
+            want = tuple(round(x, 6) for x in table.rows[clue].get(word, (0.0, 0.0, 0.0, 0.0)))
+            assert tuple(round(x, 6) for x in one[word]) == want, (clue, word)

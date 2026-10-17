@@ -154,14 +154,9 @@ class Memory:
         """Strengths from one clue (any word) to the given board words."""
         out = {w: [0.0] * K for w in words}
         links = self.db.ro_query(key, C.CLUE_LINKS, {"clue": clue, "board": list(words)}, name="clue_links")
-        if links.rows:
-            fwd, back = links.rows[0]
-            for word, s in fwd:
-                if word is not None and s is not None:
-                    out[word][0] = float(s)
-            for word, s in back:
-                if word is not None and s is not None:
-                    out[word][1] = float(s)
+        for word, s, kind in links.rows:
+            if word in out and s is not None:
+                out[word][int(kind)] = float(s)
         params = {"clues": [clue], "board": list(words), "floor": CHAIN_FLOOR}
         for _, word, s in self.db.ro_query(key, C.CHAIN, params, name="chain").rows:
             out[word][2] = float(s)

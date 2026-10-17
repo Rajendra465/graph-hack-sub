@@ -98,12 +98,16 @@ RETURN clue, word, s
 """
 
 # One clue (any word) against the board: direct and reverse links in one round trip.
+# (On 6.0.2, OPTIONAL MATCH -> WITH collect() -> a second OPTIONAL MATCH silently drops the second
+# match's rows; UNION ALL of two plain patterns does not. tests/contract checks both readers agree.)
 CLUE_LINKS = """
-MATCH (c:Word {text: $clue})
-OPTIONAL MATCH (c)-[f:ASSOC]->(t1:Word) WHERE t1.text IN $board
-WITH c, collect([t1.text, coalesce(f.pp, f.p)]) AS fwd
-OPTIONAL MATCH (c)<-[b:ASSOC]-(t2:Word) WHERE t2.text IN $board
-RETURN fwd, collect([t2.text, coalesce(b.pp, b.p)]) AS back
+MATCH (c:Word {text: $clue})-[f:ASSOC]->(t:Word)
+WHERE t.text IN $board
+RETURN t.text AS word, coalesce(f.pp, f.p) AS s, 0 AS kind
+UNION ALL
+MATCH (c:Word {text: $clue})<-[b:ASSOC]-(t:Word)
+WHERE t.text IN $board
+RETURN t.text AS word, coalesce(b.pp, b.p) AS s, 1 AS kind
 """
 
 # Block: the strongest chain of at most two links from the clue to the bomb, in this memory.

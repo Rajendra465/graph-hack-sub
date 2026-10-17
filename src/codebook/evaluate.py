@@ -30,6 +30,7 @@ from codebook.partners import make_partner
 from codebook.session import Session
 
 TRAIN_SEED0 = 1000
+EXPLORE = 1.0  # practice games favour informative clues (see spymaster.disagreement)
 TEST_SEED0 = 6000   # final test boards (amended from 5000, see EVAL.md)
 PILOT_SEED0 = 8000  # tuning boards for pilots; never used in the final run
 SWAPS = {"glove": "w2v", "w2v": "glove", "persona-mirror": "persona-leaper", "persona-leaper": "persona-mirror",
@@ -74,7 +75,7 @@ def _memory() -> tuple[config.Settings, Memory]:
 
 
 def train_partner(pid: str, games: int, *, fresh: bool = True, log: Callable[[str], None] = print,
-                  snapshots: Sequence[int] = ()) -> list[dict]:
+                  snapshots: Sequence[int] = (), explore: float = EXPLORE) -> list[dict]:
     """Play `games` training boards with learning on. Returns one dict per game.
 
     `snapshots`: after these game counts, GRAPH.COPY the memory to `<pid>-at<N>` (a learning curve)."""
@@ -87,7 +88,8 @@ def train_partner(pid: str, games: int, *, fresh: bool = True, log: Callable[[st
         seed = TRAIN_SEED0 + i
         gid = f"{pid}-train-{seed}"
         result, session = play(lambda ev: Session(memory, key, model, gid, seed, "train", ev, write_key=key,
-                                                  learn=True, allowed=spec.knows), spec.guesser_class, seed, gid)
+                                                  learn=True, allowed=spec.knows, explore=explore),
+                               spec.guesser_class, seed, gid)
         model = session.model
         row = {"partner": pid, "condition": "train", "memory_of": pid, **result.as_dict(),
                "style": model.style.as_dict(), "biased_words": len(model.bias)}

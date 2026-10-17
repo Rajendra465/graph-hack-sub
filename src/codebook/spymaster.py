@@ -79,6 +79,26 @@ def evaluate(board: BoardView, clue: str, strengths: Mapping[str, Sequence[float
     return out
 
 
+# Practice games should teach Codebook how this partner thinks. One-habit hypotheses (only direct
+# links, only reverse, only chains, only shared associates) disagree on some clues; those clues are
+# the informative ones. Without them, the data can't tell a reverse thinker from a direct thinker,
+# because in the situations a careful clue-giver picks, both choose the same word.
+HABITS = np.eye(4) * 4.0
+
+
+def disagreement(board: BoardView, strengths: Mapping[str, Sequence[float]]) -> float:
+    """Mean pairwise total-variation distance between the habits' predicted first picks (0..1)."""
+    from codebook.model import phi  # noqa: PLC0415
+
+    x = phi(np.array([tuple(strengths.get(w, ZERO)) for w in board.words], dtype=float))
+    pulls = x @ HABITS.T                      # (n_words, n_habits)
+    p = np.exp(pulls - pulls.max(axis=0))
+    p /= p.sum(axis=0)
+    k = p.shape[1]
+    tv = [0.5 * np.abs(p[:, i] - p[:, j]).sum() for i in range(k) for j in range(i + 1, k)]
+    return float(np.mean(tv))
+
+
 def plan(board: BoardView, table: Mapping[str, Mapping[str, Sequence[float]]], model: PartnerModel, *,
          seed: int, allowed: Callable[[str], bool] = lambda _w: True, costs: Costs = Costs(),
          limit: int = 40) -> list[Option]:
