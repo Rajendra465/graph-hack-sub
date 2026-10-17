@@ -180,7 +180,7 @@ def translate_error(exc: Exception) -> DbError:
     msg = str(exc)
     low = msg.lower()
     if isinstance(exc, (redis.ConnectionError, redis.TimeoutError)) and not isinstance(exc, redis.ResponseError):
-        return Unreachable(f"FalkorDB unreachable: {msg}. Start it with `docker compose up -d`.")
+        return Unreachable(f"FalkorDB unreachable: {msg.rstrip('. ')}. Start it with `docker compose up -d`.")
     if "noperm" in low or "no permissions" in low:
         return NoPermission(msg)
     if "timed out" in low or "timeout" in low:

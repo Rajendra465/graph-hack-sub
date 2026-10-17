@@ -70,8 +70,21 @@ appear in the same contexts. Nobody told Codebook that.
 
 ## Results
 
-_Filled in from the final run: [results/…md]._ The evaluation was written down and committed before the
-first test run ([EVAL.md](EVAL.md)), including a stop rule.
+The evaluation was written down and committed before the first test run ([EVAL.md](EVAL.md)), including a
+stop rule: if a partner's own memory didn't beat everyone's memory for either competition bot, we'd say the
+idea failed. On 200 boards each partner never saw (everyone's memory here is ConceptNet 5.7):
+
+| Partner | Everyone's memory | Your memory | Wrong memory |
+|---|---|---|---|
+| word2vec bot | 15.6 turns, 33% bomb | **14.5 turns, 21% bomb** | 15.0 |
+| GloVe bot | 16.0, 33% bomb | 15.7, 28% bomb | 15.5 |
+| planted backwards thinker | 6.6 | **5.6** | 6.9 |
+| planted two-step jumper | 6.8 | **6.5** | 7.3 |
+
+Your memory beat everyone's for three of four partners (paired by board, 95% intervals below zero); for GloVe
+it didn't. The wrong partner's memory lost clearly for the planted partners, who think differently, but not
+between the two bots, who think alike: each bot's memory works almost as well for the other. That's a promise
+we made and didn't keep, and the README says so.
 
 ## Five things we learned about FalkorDB 6.0.2
 

@@ -201,7 +201,29 @@ boards (seeds 1000-1019) and are tested on boards they never saw (6000-6199), wi
 
 ## Results
 
-_To be filled in from `results/` after the run._
+Run `final-20261017-1806` (scripts/final_run.sh, commit stamped in `results/runs/<run>/plan.jsonl`).
+Everyone's memory: **ConceptNet 5.7** (SWOW-EN18 needs a licence form; the code supports both).
+200 test boards per set-up (seeds 6000-6199), never seen in training; memories frozen. Turns to finish,
+lower is better; a lost game counts 25 (engine rule). Differences are paired by board with a 95% bootstrap
+interval; "better" means the whole interval is below zero. Full report: [`results/final-20261017-1806.md`](results/final-20261017-1806.md).
+
+| Partner | Everyone's memory | Your memory | Wrong memory | Yours vs everyone's | Yours vs wrong |
+|---|---|---|---|---|---|
+| word2vec bot (competition) | 15.62 turns, 33% bomb | **14.46, 21% bomb** | 14.97 (GloVe's) | **−1.16 [−2.20, −0.10] better** | −0.51 [−1.22, +0.18] |
+| GloVe bot (competition) | 16.00, 33% bomb | 15.68, 28% bomb | 15.49 (word2vec's) | −0.32 [−1.25, +0.61] | +0.19 [−0.46, +0.83] |
+| Test partner A (planted: backwards links) | 6.60, 1% bomb | **5.63, 0% bomb** | 6.93 (B's) | **−0.98 [−1.29, −0.74] better** | **−1.30 [−1.86, −0.80] better** |
+| Test partner B (planted: two-step chains) | 6.82, 0.5% bomb | **6.53, 0.5% bomb** | 7.33 (A's) | **−0.29 [−0.55, −0.03] better** | **−0.80 [−1.46, −0.20] better** |
+
+What this says, plainly:
+
+- **A partner's own memory beat everyone's memory for three of four partners**, and for word2vec it cut bomb
+  hits from 33% to 21%. For GloVe the difference is not significant.
+- **The memory is about the partner where partners differ.** The two planted partners think differently, and
+  each one's memory beats the other's. The two competition bots think alike (both are word-vector models),
+  so each bot's memory works almost as well for the other; that is why promise 2 is not kept.
+- **Clean clues** (every pick a team word) rose from 52% to 64% for both bots with their own memory.
+
+_Learning curve, Claude as a partner, and the AI clue-giver set-ups: being filled in from the same run._
 
 ## AI use
 
