@@ -15,6 +15,7 @@ from codebook.memory import Memory
 from codebook.memory import now as memory_now
 
 app = typer.Typer(help="Codebook: an AI clue-giver that remembers each partner, in FalkorDB.",
+                  pretty_exceptions_show_locals=False,
                   no_args_is_help=True, add_completion=False)
 
 COLOUR = {"team": "TEAM", "opponent": "opponent", "neutral": "neutral", "assassin": "BOMB"}
@@ -58,6 +59,9 @@ def setup(swow: Path = typer.Option(None, help="Path to SWOW-EN18.zip (default: 
             typer.echo(f"error: {path} not found; download {loader.CONCEPTNET_URL}", err=True)
             raise typer.Exit(2)
         digest, dataset, version, min_count = loader.sha256(path), "ConceptNet", "5.7.0", 1
+        if digest != loader.CONCEPTNET_SHA256:
+            typer.echo(f"error: {path} has SHA-256 {digest}, expected {loader.CONCEPTNET_SHA256}", err=True)
+            raise typer.Exit(2)
         vocab = loader.frequent_words(settings.data_dir / "vectors" / "glove-wiki-gigaword-300.gz")
         vocab |= set(clue_wordlist()) | set(pool_words())
         typer.echo(f"reading ConceptNet English assertions over {len(vocab)} words ...")
@@ -299,7 +303,7 @@ def export_memory(partner: str, out: Path = typer.Option(None, help="File to wri
 @app.command(name="import")
 def import_memory(path: Path, as_partner: str = typer.Option(None, "--as", help="Partner id to restore as"),
                   replace: bool = typer.Option(False, help="Overwrite an existing memory with the same id")) -> None:
-    """Restore a partner's memory from a file written by `codebook export`."""
+    """Restore a partner's memory from a file written by `codebook export`. Import only files you trust."""
     _, memory = _memory()
     try:
         key, header = memory.import_partner(path.read_bytes(), as_partner, replace=replace)

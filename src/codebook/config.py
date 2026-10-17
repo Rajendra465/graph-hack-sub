@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
 
@@ -17,7 +17,7 @@ class Settings:
     db_host: str = "127.0.0.1"
     db_port: int = 6390
     db_user: str = ""
-    db_password: str = ""
+    db_password: str = field(default="", repr=False)
     db_index: int = 0
     home: Path = Path(".")
     ui_host: str = "127.0.0.1"

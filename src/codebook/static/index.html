@@ -134,6 +134,7 @@ td.m { font-family: 'JetBrains Mono', monospace; }
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
+const num = (x) => { const n = Number(x); return Number.isFinite(n) ? n : 0; };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const DEFAULT_STYLE = {direct: 3.0, reverse: 1.5, chain: 1.5, shared: 1.5};
 let game = null, since = 0, timer = null, roles = {}, queries = [], partnersInfo = [];
@@ -178,7 +179,7 @@ async function start() {
     const j = await api('/api/game', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
     game = j.game; since = 0;
     renderBoard(j.words, j.key);
-    $('gameinfo').innerHTML = `Board ${body.seed} · partner <b>${esc(body.partner)}</b> · memory <b>${esc(j.read_key)}</b>`;
+    $('gameinfo').innerHTML = `Board ${num(body.seed)} · partner <b>${esc(body.partner)}</b> · memory <b>${esc(j.read_key)}</b>`;
     timer = setInterval(poll, 400);
     if (body.partner !== 'you') showMemory(body.memory === 'own' ? body.partner : body.memory);
     compare();
@@ -191,7 +192,7 @@ async function poll() {
   for (const ev of j.events) { since = ev.i + 1; handle(ev); }
   if (j.status !== 'running') {
     clearInterval(timer);
-    $('status').textContent = j.status === 'error' ? j.error : (j.status === 'won' ? `Won in ${j.result.turns} turns` : `Lost (${j.result.assassin ? 'bomb' : 'turn limit or opponent'})`);
+    $('status').textContent = j.status === 'error' ? j.error : (j.status === 'won' ? `Won in ${num(j.result.turns)} turns` : `Lost (${j.result.assassin ? 'bomb' : 'turn limit or opponent'})`);
     $('status').className = 'status ' + j.status;
     $('yourturn').classList.add('hidden');
     const p = $('partner').value; if (p !== 'you') showMemory($('memory').value === 'own' ? p : $('memory').value);
@@ -204,22 +205,22 @@ function handle(ev) {
   if (ev.kind === 'clue') {
     const o = ev.option;
     document.querySelectorAll('.tile').forEach(t => t.classList.toggle('target', o.targets.includes(t.dataset.w)));
-    $('clueword').textContent = `${o.clue.toUpperCase()} · ${o.count}`;
-    $('cluemeta').innerHTML = `aiming at <b>${esc(o.targets.join(', ').toUpperCase())}</b> · expected ${o.expected_hits} right · bomb risk ${(o.p_assassin * 100).toFixed(1)}% · by ${esc(ev.proposed_by)}${ev.forced ? ' · <b>forced (all blocked)</b>' : ''}`;
+    $('clueword').textContent = `${o.clue.toUpperCase()} · ${num(o.count)}`;
+    $('cluemeta').innerHTML = `aiming at <b>${esc(o.targets.join(', ').toUpperCase())}</b> · expected ${num(o.expected_hits)} right · bomb risk ${(o.p_assassin * 100).toFixed(1)}% · by ${esc(ev.proposed_by)}${ev.forced ? ' · <b>forced (all blocked)</b>' : ''}`;
     const row = document.createElement('div'); row.className = 'turn'; row.id = 'turn-' + ev.turn;
-    row.innerHTML = `<span class="c">${ev.turn}. ${esc(o.clue.toUpperCase())} ${o.count}</span>`;
+    row.innerHTML = `<span class="c">${num(ev.turn)}. ${esc(o.clue.toUpperCase())} ${num(o.count)}</span>`;
     $('log').prepend(row);
   } else if (ev.kind === 'guess') {
     const t = document.querySelector(`.tile[data-w="${CSS.escape(ev.word)}"]`);
     if (t) { t.classList.remove('target', 'clickable'); t.classList.add('r-' + ev.role); t.onclick = null; }
     const row = $('log').firstElementChild;
-    if (row) row.insertAdjacentHTML('beforeend', `<span class="chip ${ev.role}">${esc(ev.word.toUpperCase())}</span>`);
+    if (row) row.insertAdjacentHTML('beforeend', `<span class="chip ${esc(ev.role)}">${esc(ev.word.toUpperCase())}</span>`);
   } else if (ev.kind === 'block') {
     $('blocks').insertAdjacentHTML('afterbegin', `<div class="block">Blocked <b>${esc(ev.clue.toUpperCase())}</b>${ev.proposed_by !== 'codebook' ? ' (proposed by ' + esc(ev.proposed_by) + ')' : ''}: ${ev.path.length ? '<b>' + esc(ev.path.join(' → ')) + '</b> reaches the bomb, strength ' + ev.strength : 'the model gives the bomb ' + (ev.p_assassin * 100).toFixed(1) + '%'}</div>`);
   } else if (ev.kind === 'your_turn') {
     $('yourturn').classList.remove('hidden');
   } else if (ev.kind === 'refit') {
-    $('log').insertAdjacentHTML('afterbegin', `<div class="turn muted">Memory updated: style ${esc(JSON.stringify(ev.style))}, ${ev.biased_words} favourite words</div>`);
+    $('log').insertAdjacentHTML('afterbegin', `<div class="turn muted">Memory updated: style ${esc(JSON.stringify(ev.style))}, ${num(ev.biased_words)} favourite words</div>`);
   } else if (ev.kind === 'error') {
     $('status').textContent = ev.error; $('status').className = 'status error';
   }
@@ -228,7 +229,7 @@ function handle(ev) {
 function renderQueries() {
   const total = queries.reduce((s, q) => s + q.ms, 0);
   $('qsum').textContent = `${queries.length} queries this game · ${total.toFixed(0)} ms in FalkorDB`;
-  $('qlist').innerHTML = queries.slice(0, 60).map(q => `<details class="q"><summary><span class="n">${esc(q.name)}</span><span class="k">${esc(q.key)} · ${q.ro ? 'GRAPH.RO_QUERY' : 'GRAPH.QUERY'}</span><span>${q.rows} rows</span><span>${q.ms} ms</span></summary><pre>${esc(q.cypher)}</pre>${q.params ? `<pre class="p">${esc(q.params)}</pre>` : ''}</details>`).join('');
+  $('qlist').innerHTML = queries.slice(0, 60).map(q => `<details class="q"><summary><span class="n">${esc(q.name)}</span><span class="k">${esc(q.key)} · ${q.ro ? 'GRAPH.RO_QUERY' : 'GRAPH.QUERY'}</span><span>${num(q.rows)} rows</span><span>${num(q.ms)} ms</span></summary><pre>${esc(q.cypher)}</pre>${q.params ? `<pre class="p">${esc(q.params)}</pre>` : ''}</details>`).join('');
 }
 
 async function guess(word) {
@@ -244,12 +245,12 @@ async function showMemory(pid) {
     const max = Math.max(6, ...Object.values(m.style).map(Math.abs));
     const bars = ['direct', 'reverse', 'chain', 'shared'].map(k => `<span>${k}</span><div class="bar"><i style="width:${Math.max(0, m.style[k] ?? 0) / max * 100}%"></i><s style="left:${DEFAULT_STYLE[k] / max * 100}%"></s></div><span class="m">${(m.style[k] ?? 0).toFixed(2)}</span>`).join('');
     $('tab-memory').innerHTML = `
-      <div class="stats"><div class="stat"><b>${m.games}</b><span>games</span></div><div class="stat"><b>${m.turns}</b><span>clues</span></div>
-      <div class="stat"><b>${m.learned_links}</b><span>links reweighted</span></div><div class="stat"><b>${m.mb ?? '–'}</b><span>MB in FalkorDB</span></div></div>
+      <div class="stats"><div class="stat"><b>${num(m.games)}</b><span>games</span></div><div class="stat"><b>${num(m.turns)}</b><span>clues</span></div>
+      <div class="stat"><b>${num(m.learned_links)}</b><span>links reweighted</span></div><div class="stat"><b>${m.mb == null ? '–' : num(m.mb)}</b><span>MB in FalkorDB</span></div></div>
       <div class="muted">${esc(m.key)} · how this partner links words (orange tick = everyone's default)</div>
       <div class="bars">${bars}</div>
       <table><tr><th>Clue → word</th><th>everyone</th><th>this partner</th><th>hits</th><th>misses</th></tr>
-      ${m.links.slice(0, 18).map(l => `<tr><td>${esc(l.clue)} → ${esc(l.word)}${l.learned ? ' <span class="chip team">new</span>' : ''}</td><td class="m">${(+l.p).toFixed(3)}</td><td class="m">${(+l.pp).toFixed(3)}</td><td>${l.hits}</td><td>${l.misses}</td></tr>`).join('')}</table>
+      ${m.links.slice(0, 18).map(l => `<tr><td>${esc(l.clue)} → ${esc(l.word)}${l.learned ? ' <span class="chip team">new</span>' : ''}</td><td class="m">${(+l.p).toFixed(3)}</td><td class="m">${(+l.pp).toFixed(3)}</td><td>${num(l.hits)}</td><td>${num(l.misses)}</td></tr>`).join('')}</table>
       <p class="muted">Words this partner leans towards: ${m.bias.filter(b => b.bias > 0).slice(0, 12).map(b => esc(b.word)).join(', ') || 'none yet'}</p>`;
   } catch (e) { $('tab-memory').innerHTML = `<div class="muted">${esc(e.message)}</div>`; }
 }
@@ -259,7 +260,7 @@ async function compare() {
   const mems = typed.length ? typed : ['everyone', ...partnersInfo.map(p => p.id).filter(id => !/-at\d+$/.test(id))].slice(0, 4);
   try {
     const j = await api(`/api/suggest?seed=${+$('seed').value}&memories=${mems.map(encodeURIComponent).join(',')}`);
-    $('cmp').innerHTML = `<div class="cols">${Object.entries(j.by_memory).map(([mem, opts]) => `<div><h4 style="margin:10px 0 6px">${esc(mem)}</h4>${opts.slice(0, 3).map(o => `<div class="opt"><b>${esc(o.clue.toUpperCase())} ${o.count}</b><br><span class="muted">${esc(o.targets.join(', '))} · exp ${o.expected_hits}</span></div>`).join('')}</div>`).join('')}</div>`;
+    $('cmp').innerHTML = `<div class="cols">${Object.entries(j.by_memory).map(([mem, opts]) => `<div><h4 style="margin:10px 0 6px">${esc(mem)}</h4>${opts.slice(0, 3).map(o => `<div class="opt"><b>${esc(o.clue.toUpperCase())} ${num(o.count)}</b><br><span class="muted">${esc(o.targets.join(', '))} · exp ${num(o.expected_hits)}</span></div>`).join('')}</div>`).join('')}</div>`;
   } catch (e) { $('cmp').innerHTML = `<div class="muted">${esc(e.message)}</div>`; }
 }
 

@@ -16,6 +16,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from starlette.applications import Starlette
+from starlette.middleware import Middleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
 from starlette.routing import Route
@@ -28,12 +31,17 @@ from codebook.harness import board_for_seed, engine, play
 from codebook.memory import Memory
 from codebook.partners import ALL as PARTNER_IDS
 from codebook.partners import make_partner
-from codebook.session import Session
+from codebook.session import Session, TurnLimit
 from codebook.spymaster import plan
 
 STATIC = Path(__file__).resolve().parent / "static"
 _current = threading.local()
 HUMAN = "you"
+CLUE_GIVERS = ("codebook", "claude", "claude-sonnet", "codex")
+MAX_RUNNING = 4          # games playing at once
+MAX_KEPT = 50            # finished games kept for the page
+HUMAN_WAIT_S = 300       # an unanswered human turn ends the game
+MAX_SEED = 10**9
 
 
 @dataclass
@@ -75,6 +83,7 @@ class LiveApp:
         self.memory = Memory(self.db)
         self.games: dict[str, LiveGame] = {}
         self.ids = itertools.count(1)
+        self.running = threading.BoundedSemaphore(MAX_RUNNING)
         self.specs: dict[str, object] = {}
         self.db.on_query(self._on_query)
 
@@ -93,18 +102,37 @@ class LiveApp:
     def start(self, body: dict) -> LiveGame:
         partner = str(body.get("partner", "glove"))
         if partner != HUMAN and partner not in PARTNER_IDS:
-            raise ValueError(f"unknown partner {partner}")
+            raise ValueError(f"unknown partner {partner!r}")
         memory_of = str(body.get("memory", "own"))
-        seed = int(body.get("seed", 5000))
+        learn = body.get("learn") is True
+        clue_giver = str(body.get("clue_giver", "codebook"))
+        if clue_giver not in CLUE_GIVERS:
+            raise ValueError(f"unknown clue-giver {clue_giver!r}")
+        try:
+            seed = int(body.get("seed", 5000))
+            delay = min(3.0, max(0.0, float(body.get("delay", 1.0))))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("seed and delay must be numbers") from exc
+        if not 0 <= seed <= MAX_SEED:
+            raise ValueError(f"seed must be between 0 and {MAX_SEED}")
+        if learn and memory_of != "own":
+            raise ValueError("learning writes only to the partner's own memory")
         if memory_of == "everyone":
             read_key = keys.POPULATION
+        elif memory_of == "own":
+            read_key = self.memory.ensure_partner(partner)
         else:
-            read_key = self.memory.ensure_partner(partner if memory_of == "own" else memory_of)
+            read_key = keys.partner_key(memory_of)
+            if not self.db.exists(read_key):
+                raise ValueError(f"no memory for {memory_of!r}")
+        if not self.running.acquire(blocking=False):
+            raise OverflowError(f"{MAX_RUNNING} games are already running; try again shortly")
         words, key = board_for_seed(seed)
         game = LiveGame(f"live-{next(self.ids)}-{partner}-{seed}", partner, memory_of, read_key, seed,
-                        str(body.get("mode", "watch")), bool(body.get("learn", False)),
-                        str(body.get("clue_giver", "codebook")), float(body.get("delay", 1.0)), words, key)
+                        str(body.get("mode", "watch")), learn, clue_giver, delay, words, key)
         self.games[game.gid] = game
+        for old in [g for g in list(self.games)[:-MAX_KEPT] if self.games[g].status != "running"]:
+            self.games.pop(old, None)
         threading.Thread(target=self._run, args=(game,), daemon=True, name=game.gid).start()
         return game
 
@@ -130,7 +158,10 @@ class LiveApp:
 
             def get_answer(self):
                 game.add({"kind": "your_turn", "left": self.left})
-                word = game.inbox.get()
+                try:
+                    word = game.inbox.get(timeout=HUMAN_WAIT_S)
+                except queue.Empty as exc:
+                    raise TurnLimit(f"{game.gid}: no answer for {HUMAN_WAIT_S} s") from exc
                 if word is None:
                     return None
                 self.left -= 1
@@ -175,6 +206,7 @@ class LiveApp:
             game.add({"kind": "error", "error": game.error})
         finally:
             _current.game = None
+            self.running.release()
 
     # ---------- views ----------
     def partners(self) -> list[dict]:
@@ -197,11 +229,15 @@ class LiveApp:
                 "bias": [{"word": w, "bias": round(b, 3)} for w, b in bias]}
 
     def suggest(self, seed: int, memories: list[str]) -> dict:
+        if len(memories) > 5:
+            raise ValueError("compare at most 5 memories")
         words, key = board_for_seed(seed)
         board = BoardView.from_harness(words, key)
         out = {"board": board.words, "roles": board.roles, "by_memory": {}}
         for mem in memories:
             read_key = keys.POPULATION if mem == "everyone" else keys.partner_key(mem)
+            if not self.db.exists(read_key):
+                raise ValueError(f"no memory for {mem!r}")
             model = self.memory.model(read_key)
             table = self.memory.features(read_key, board, model)
             options = plan(board, table.rows, model, seed=seed)[:5]
@@ -229,8 +265,12 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
 
     async def new_game(request: Request):
         body = await request.json()
+        if not isinstance(body, dict):
+            return ok({"error": "expected a JSON object"}, 400)
         try:
             game = live.start(body)
+        except OverflowError as exc:
+            return ok({"error": str(exc)}, 429)
         except (DbError, ValueError, OSError) as exc:
             return ok({"error": str(exc)}, 400)
         return ok({"game": game.gid, "words": [w.lower() for w in game.words], "key": game.key,
@@ -249,19 +289,21 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
         if game is None:
             return ok({"error": "no such game"}, 404)
         body = await request.json()
-        word = body.get("word")
-        game.inbox.put(str(word).lower() if word else None)
+        word = body.get("word") if isinstance(body, dict) else None
+        if word is not None and (not isinstance(word, str) or word.upper() not in game.words):
+            return ok({"error": "not a word on this board"}, 400)
+        game.inbox.put(word.lower() if word else None)
         return ok({"queued": word})
 
     def cypher_texts(_request: Request):
         return ok({name: text.strip() for name, text in C.ALL.items()})
 
     def suggest(request: Request):
-        seed = int(request.query_params.get("seed", 5000))
-        mems = [m for m in request.query_params.get("memories", "everyone").split(",") if m]
         try:
+            seed = int(request.query_params.get("seed", 5000))
+            mems = [m for m in request.query_params.get("memories", "everyone").split(",") if m]
             return ok(live.suggest(seed, mems))
-        except DbError as exc:
+        except (DbError, ValueError) as exc:
             return ok({"error": str(exc)}, 400)
 
     routes = [
@@ -274,7 +316,24 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
         Route("/api/cypher", cypher_texts),
         Route("/api/suggest", suggest),
     ]
-    return Starlette(routes=routes)
+    host, port = live.settings.ui_host, live.settings.ui_port
+    allowed_hosts = sorted({"127.0.0.1", "localhost", host})
+    origins = {f"http://{h}:{port}" for h in allowed_hosts}
+
+    class SameOriginJson(BaseHTTPMiddleware):
+        """Refuse cross-site writes: a POST must be JSON and come from this page."""
+
+        async def dispatch(self, request, call_next):
+            if request.method == "POST":
+                origin = request.headers.get("origin")
+                if origin and origin not in origins:
+                    return JSONResponse({"error": "cross-origin request refused"}, status_code=403)
+                if not request.headers.get("content-type", "").startswith("application/json"):
+                    return JSONResponse({"error": "expected application/json"}, status_code=415)
+            return await call_next(request)
+
+    return Starlette(routes=routes, middleware=[Middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts),
+                                                Middleware(SameOriginJson)])
 
 
 def serve(host: str, port: int) -> None:

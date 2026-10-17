@@ -26,6 +26,7 @@ LEARN_GAIN = 0.05     # each graded pick adds 5 points of link strength for this
 LEARN_DECAY = 0.7     # each miss keeps 70% of it
 CHAIN_FLOOR = 0.0005  # two-step chains weaker than this are ignored
 SHORTLIST = 150
+MAX_IMPORT_BYTES = 256 * 2**20
 EXPORT_MAGIC = b"CODEBOOK-MEMORY\n"
 
 
@@ -122,6 +123,9 @@ class Memory:
         return EXPORT_MAGIC + json.dumps(header).encode() + b"\n" + blob
 
     def import_partner(self, data: bytes, pid: str | None = None, *, replace: bool = False) -> tuple[str, dict]:
+        """Restore a memory file. The payload is a Redis DUMP that FalkorDB parses: import only files you trust."""
+        if len(data) > MAX_IMPORT_BYTES:
+            raise ValueError(f"memory file larger than {MAX_IMPORT_BYTES // 2**20} MB")
         if not data.startswith(EXPORT_MAGIC):
             raise ValueError("not a Codebook memory file")
         head, _, blob = data[len(EXPORT_MAGIC):].partition(b"\n")

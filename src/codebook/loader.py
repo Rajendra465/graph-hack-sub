@@ -109,6 +109,7 @@ def read_links(path: Path) -> list[Link]:
 
 CONCEPTNET_FILE = "conceptnet-assertions-5.7.0.csv.gz"
 CONCEPTNET_URL = f"https://s3.amazonaws.com/conceptnet/downloads/2019/edges/{CONCEPTNET_FILE}"
+CONCEPTNET_SHA256 = "accd65fe94038584295574ddc26e1500c1919c8c4532bf771811cafd0948af7e"
 # Relations that read like a free association ("X makes me think of Y"); morphology and
 # etymology links (FormOf, DerivedFrom, EtymologicallyRelatedTo) and external links are left out.
 CN_FORWARD = {"IsA", "PartOf", "HasA", "UsedFor", "CapableOf", "AtLocation", "Causes", "HasSubevent",

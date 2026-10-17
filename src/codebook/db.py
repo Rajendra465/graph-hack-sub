@@ -95,7 +95,7 @@ def _quote(s: str) -> str:
 
 
 def _ident(k: str) -> str:
-    if not IDENT_RE.match(k):
+    if not IDENT_RE.fullmatch(k):
         raise ValueError(f"invalid parameter or map key {k!r}")
     return k
 

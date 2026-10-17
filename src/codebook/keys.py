@@ -14,7 +14,7 @@ import re
 # with real memories: on 6.0.2 a same-named graph being re-created in another Redis database
 # can abort a running write ("graph was deleted or replaced while the query was running").
 PREFIX = os.environ.get("CODEBOOK_KEY_PREFIX", "codebook:")
-if not re.match(r"^[a-z][a-z0-9_-]{0,15}:$", PREFIX):
+if not re.fullmatch(r"[a-z][a-z0-9_-]{0,15}:", PREFIX):
     raise ValueError(f"CODEBOOK_KEY_PREFIX must look like 'name:', got {PREFIX!r}")
 POPULATION = PREFIX + "population"
 PARTNER_PREFIX = PREFIX + "partner:"
@@ -27,7 +27,7 @@ class BadPartnerId(ValueError):
 
 
 def check_partner_id(pid: str) -> str:
-    if not isinstance(pid, str) or not _ID_RE.match(pid):
+    if not isinstance(pid, str) or not _ID_RE.fullmatch(pid):
         raise BadPartnerId(f"bad partner id {pid!r}: use lowercase letters, digits, '-' or '_'")
     return pid
 
@@ -41,7 +41,7 @@ def partner_of(key: str) -> str | None:
     if not key.startswith(PARTNER_PREFIX):
         return None
     pid = key[len(PARTNER_PREFIX):]
-    return pid if _ID_RE.match(pid) else None
+    return pid if _ID_RE.fullmatch(pid) else None
 
 
 def is_codebook_key(key: str) -> bool:
