@@ -274,6 +274,29 @@ def ui(host: str = typer.Option(None), port: int = typer.Option(None)) -> None:
     serve(host, port)
 
 
+@app.command(name="export")
+def export_memory(partner: str, out: Path = typer.Option(None, help="File to write (default: <partner>.codebook)")) -> None:
+    """Write one partner's memory to a file you can carry to another FalkorDB server."""
+    _, memory = _memory()
+    path = out or Path(f"{partner}.codebook")
+    data = memory.export_partner(partner)
+    path.write_bytes(data)
+    typer.echo(f"wrote {path} ({len(data) / 1e6:.1f} MB): {keys.partner_key(partner)}")
+
+
+@app.command(name="import")
+def import_memory(path: Path, as_partner: str = typer.Option(None, "--as", help="Partner id to restore as"),
+                  replace: bool = typer.Option(False, help="Overwrite an existing memory with the same id")) -> None:
+    """Restore a partner's memory from a file written by `codebook export`."""
+    _, memory = _memory()
+    try:
+        key, header = memory.import_partner(path.read_bytes(), as_partner, replace=replace)
+    except ValueError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(2) from exc
+    typer.echo(f"restored {key}: {header['games']} games, {header['clues']} clues, exported {header['exported']}")
+
+
 @app.command()
 def acl(partner: str, revoke: bool = typer.Option(False, help="Delete the user instead")) -> None:
     """Create a database user that can read everyone's memory and touch only this partner's key."""

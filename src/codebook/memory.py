@@ -7,6 +7,7 @@ Partner memories (codebook:partner:<id>) are GRAPH.COPY clones that learn and ke
 
 from __future__ import annotations
 
+import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -25,6 +26,7 @@ LEARN_GAIN = 0.05     # each graded pick adds 5 points of link strength for this
 LEARN_DECAY = 0.7     # each miss keeps 70% of it
 CHAIN_FLOOR = 0.0005  # two-step chains weaker than this are ignored
 SHORTLIST = 150
+EXPORT_MAGIC = b"CODEBOOK-MEMORY\n"
 
 
 class ReadOnlyKey(PermissionError):
@@ -107,6 +109,33 @@ class Memory:
         self.db.copy_graph(src, dst)
         self.db.query(dst, "MATCH (p:Partner) SET p.id = $id", {"id": dst_pid}, name="partner_rename")
         return dst
+
+    def export_partner(self, pid: str) -> bytes:
+        """A portable file for one partner's memory: magic line, JSON header line, DUMP payload."""
+        key = keys.partner_key(pid)
+        blob = self.db.dump(key)
+        info = self.info(pid)
+        header = {"format": 1, "partner": pid, "games": info.games, "clues": info.turns,
+                  "style": info.style.as_dict(), "exported": now(), "bytes": len(blob),
+                  "sha256": hashlib.sha256(blob).hexdigest(),
+                  "note": "Redis DUMP of a FalkorDB graph; restore on a server running the same FalkorDB version"}
+        return EXPORT_MAGIC + json.dumps(header).encode() + b"\n" + blob
+
+    def import_partner(self, data: bytes, pid: str | None = None, *, replace: bool = False) -> tuple[str, dict]:
+        if not data.startswith(EXPORT_MAGIC):
+            raise ValueError("not a Codebook memory file")
+        head, _, blob = data[len(EXPORT_MAGIC):].partition(b"\n")
+        header = json.loads(head)
+        if hashlib.sha256(blob).hexdigest() != header["sha256"]:
+            raise ValueError("memory file is corrupted (SHA-256 mismatch)")
+        target = keys.check_partner_id(pid or header["partner"])
+        key = keys.partner_key(target)
+        if self.db.exists(key) and not replace:
+            raise ValueError(f"{key} exists; pass replace=True to overwrite it")
+        self.db.restore(key, blob, replace=replace)
+        if target != header["partner"]:
+            self.db.query(key, "MATCH (p:Partner) SET p.id = $id", {"id": target}, name="partner_rename")
+        return key, header
 
     def partners(self) -> list[str]:
         return [keys.partner_of(k) for k in self.db.graph_keys() if keys.partner_of(k)]

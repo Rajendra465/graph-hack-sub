@@ -198,18 +198,11 @@ class Db:
         self.settings = settings
         user = username if username is not None else (settings.db_user or None)
         secret = password if password is not None else (settings.db_password or None)
-        self._r = redis.Redis(
-            host=settings.db_host,
-            port=settings.db_port,
-            db=settings.db_index,
-            username=user,
-            password=secret,
-            decode_responses=True,
-            max_connections=max_connections,
-            socket_connect_timeout=5,
-            socket_timeout=150,
-            health_check_interval=30,
-        )
+        common = dict(host=settings.db_host, port=settings.db_port, db=settings.db_index, username=user,
+                      password=secret, max_connections=max_connections, socket_connect_timeout=5,
+                      socket_timeout=150, health_check_interval=30)
+        self._r = redis.Redis(decode_responses=True, **common)
+        self._rb = redis.Redis(decode_responses=False, **common)  # DUMP/RESTORE payloads are bytes
         self.username = user or "default"
         self._listeners: list[Callable[[QueryEvent], None]] = []
         self._lock = threading.Lock()
@@ -253,6 +246,22 @@ class Db:
             if "empty key" not in low and "invalid graph" not in low and "no such" not in low:
                 raise translate_error(exc) from exc
         except (redis.ConnectionError, redis.TimeoutError) as exc:
+            raise translate_error(exc) from exc
+
+    def dump(self, key: str) -> bytes:
+        """The key's serialized value (Redis DUMP): a portable copy of one graph."""
+        try:
+            blob = self._rb.dump(key)
+        except (redis.ResponseError, redis.ConnectionError, redis.TimeoutError) as exc:
+            raise translate_error(exc) from exc
+        if blob is None:
+            raise EmptyKey(f"{key} does not exist")
+        return blob
+
+    def restore(self, key: str, blob: bytes, *, replace: bool = False) -> None:
+        try:
+            self._rb.restore(key, 0, blob, replace=replace)
+        except (redis.ResponseError, redis.ConnectionError, redis.TimeoutError) as exc:
             raise translate_error(exc) from exc
 
     def memory_mb(self, key: str) -> float | None:

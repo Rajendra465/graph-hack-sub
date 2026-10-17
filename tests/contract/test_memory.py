@@ -98,3 +98,24 @@ def test_one_clue_reader_agrees_with_the_board_reader(population):
         for word in board.words:
             want = tuple(round(x, 6) for x in table.rows[clue].get(word, (0.0, 0.0, 0.0, 0.0)))
             assert tuple(round(x, 6) for x in one[word]) == want, (clue, word)
+
+
+def test_a_memory_exported_to_a_file_comes_back_identical(population, test_settings):
+    memory = Memory(population)
+    spec = make_partner("persona-mirror", settings=test_settings, memory=memory)
+    key = memory.reset_partner("exporter")
+    model = memory.model(key)
+    play(lambda ev: Session(memory, key, model, "x-1002", 1002, "train", ev, write_key=key, learn=True),
+         spec.guesser_class, 1002, "x-1002")
+    data = memory.export_partner("exporter")
+    population.delete_graph(keys.partner_key("importer"))
+    new_key, header = memory.import_partner(data, "importer")
+    assert header["partner"] == "exporter" and header["games"] == 1
+    assert memory.model(new_key) == memory.model(key)
+    links = "MATCH (c:Word)-[r:ASSOC]->(w:Word) WHERE r.hits > 0 RETURN c.text, w.text, r.pp ORDER BY c.text, w.text"
+    assert population.ro_query(new_key, links).rows == population.ro_query(key, links).rows
+    assert memory.info("importer").games == 1
+    with pytest.raises(ValueError):
+        memory.import_partner(data, "importer")          # exists, no replace
+    with pytest.raises(ValueError):
+        memory.import_partner(data[:-10] + b"x" * 10, "other")  # corrupted payload
