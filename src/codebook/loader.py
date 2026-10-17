@@ -105,6 +105,85 @@ def read_links(path: Path) -> list[Link]:
             return list(parse_strength(io.TextIOWrapper(fh, encoding="utf-8", errors="replace")))
 
 
+# ---------- fallback: ConceptNet 5.7 (CC BY-SA 4.0), used only when SWOW is unavailable ----------
+
+CONCEPTNET_FILE = "conceptnet-assertions-5.7.0.csv.gz"
+CONCEPTNET_URL = f"https://s3.amazonaws.com/conceptnet/downloads/2019/edges/{CONCEPTNET_FILE}"
+# Relations that read like a free association ("X makes me think of Y"); morphology and
+# etymology links (FormOf, DerivedFrom, EtymologicallyRelatedTo) and external links are left out.
+CN_FORWARD = {"IsA", "PartOf", "HasA", "UsedFor", "CapableOf", "AtLocation", "Causes", "HasSubevent",
+              "HasFirstSubevent", "HasLastSubevent", "HasPrerequisite", "HasProperty", "MotivatedByGoal",
+              "ObstructedBy", "Desires", "CreatedBy", "CausesDesire", "MadeOf", "ReceivesAction", "MannerOf",
+              "SymbolOf", "DefinedAs", "Entails", "InstanceOf"}
+CN_BOTH_WAYS = {"RelatedTo", "Synonym", "Antonym", "SimilarTo", "DistinctFrom", "LocatedNear"}
+CN_TOP = 60  # keep each cue's strongest responses, like SWOW's long-tailed response lists
+
+
+def _cn_term(uri: str) -> str | None:
+    parts = uri.split("/")  # /c/en/word[/pos[/...]]
+    if len(parts) < 4 or parts[2] != "en":
+        return None
+    word = parts[3]
+    return word if WORD_RE.match(word) else None
+
+
+def parse_conceptnet(lines: Iterable[str], top: int = CN_TOP, vocab: set[str] | None = None) -> list[Link]:
+    """English single-word assertions -> per-cue response shares (weight / cue total).
+
+    `vocab` (optional) keeps the graph SWOW-sized: only words in it become nodes."""
+    import json  # noqa: PLC0415
+
+    weights: dict[str, dict[str, float]] = {}
+    for line in lines:
+        cols = line.rstrip("\n").split("\t")
+        if len(cols) < 5 or "/c/en/" not in cols[2] or "/c/en/" not in cols[3]:
+            continue
+        rel = cols[1].rsplit("/", 1)[-1]
+        if rel not in CN_FORWARD and rel not in CN_BOTH_WAYS:
+            continue
+        a, b = _cn_term(cols[2]), _cn_term(cols[3])
+        if not a or not b or a == b or (vocab is not None and (a not in vocab or b not in vocab)):
+            continue
+        try:
+            w = float(json.loads(cols[4]).get("weight", 1.0))
+        except (ValueError, AttributeError):
+            continue
+        pairs = ((a, b), (b, a)) if rel in CN_BOTH_WAYS else ((a, b),)
+        for x, y in pairs:
+            row = weights.setdefault(x, {})
+            row[y] = row.get(y, 0.0) + w
+    links: list[Link] = []
+    for cue, row in weights.items():
+        best = sorted(row.items(), key=lambda kv: (-kv[1], kv[0]))[:top]
+        total = sum(w for _, w in best)
+        for resp, w in best:
+            links.append(Link(cue, resp, max(1, round(w)), w / total))
+    return links
+
+
+def read_conceptnet(path: Path, vocab: set[str] | None = None) -> list[Link]:
+    import gzip  # noqa: PLC0415
+
+    with gzip.open(path, "rt", encoding="utf-8", errors="replace") as fh:
+        return parse_conceptnet(fh, vocab=vocab)
+
+
+def frequent_words(glove_gz: Path, limit: int = 50_000) -> set[str]:
+    """The `limit` most frequent lowercase words in GloVe 6B (its file is frequency-ordered)."""
+    import gzip  # noqa: PLC0415
+
+    words: set[str] = set()
+    with gzip.open(glove_gz, "rt", encoding="utf-8", errors="replace") as fh:
+        next(fh, None)  # word2vec header line
+        for line in fh:
+            w = line.split(" ", 1)[0]
+            if WORD_RE.match(w):
+                words.add(w)
+                if len(words) >= limit:
+                    break
+    return words
+
+
 def select(links: Iterable[Link], clue_list: Iterable[str], pool: Iterable[str],
            min_count: int = MIN_COUNT) -> tuple[list[list], list[list]]:
     """Word rows [text, cue, clue, pool] and link rows [cue, response, p, n] to load."""

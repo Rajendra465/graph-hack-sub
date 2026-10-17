@@ -32,6 +32,7 @@ def _memory() -> tuple[config.Settings, Memory]:
 
 @app.command()
 def setup(swow: Path = typer.Option(None, help="Path to SWOW-EN18.zip (default: data/SWOW-EN18.zip)"),
+          source: str = typer.Option("swow", help="swow (default) | conceptnet (fallback if SWOW is unavailable)"),
           vectors: bool = typer.Option(False, help="Also build the GloVe/word2vec caches for the bot partners"),
           force: bool = typer.Option(False, help="Delete and rebuild everyone's memory")) -> None:
     """Build everyone's memory (codebook:population) from the Small World of Words data."""
@@ -39,24 +40,35 @@ def setup(swow: Path = typer.Option(None, help="Path to SWOW-EN18.zip (default: 
     from codebook.harness import clue_wordlist, pool_words  # noqa: PLC0415
 
     settings, memory = _memory()
-    path = swow or settings.data_dir / loader.SWOW_FILE
-    if not path.exists():
-        typer.echo(f"error: {path} not found. Download SWOW-EN18 from {loader.SWOW_PAGE} "
-                   f"(accept the CC BY-NC-ND licence) and save it as {settings.data_dir / loader.SWOW_FILE}", err=True)
-        raise typer.Exit(2)
-    digest = loader.sha256(path)
-    if digest != loader.SWOW_SHA256:
-        typer.echo(f"error: {path} has SHA-256 {digest}, expected {loader.SWOW_SHA256} (the published release)",
-                   err=True)
-        raise typer.Exit(2)
+    if source == "conceptnet":
+        path = settings.data_dir / "conceptnet" / loader.CONCEPTNET_FILE
+        if not path.exists():
+            typer.echo(f"error: {path} not found; download {loader.CONCEPTNET_URL}", err=True)
+            raise typer.Exit(2)
+        digest, dataset, version, min_count = loader.sha256(path), "ConceptNet", "5.7.0", 1
+        vocab = loader.frequent_words(settings.data_dir / "vectors" / "glove-wiki-gigaword-300.gz")
+        vocab |= set(clue_wordlist()) | set(pool_words())
+        typer.echo(f"reading ConceptNet English assertions over {len(vocab)} words ...")
+        links = loader.read_conceptnet(path, vocab)
+    else:
+        path = swow or settings.data_dir / loader.SWOW_FILE
+        if not path.exists():
+            typer.echo(f"error: {path} not found. Download SWOW-EN18 from {loader.SWOW_PAGE} (accept the "
+                       f"CC BY-NC-ND licence) and save it as {settings.data_dir / loader.SWOW_FILE}", err=True)
+            raise typer.Exit(2)
+        digest, dataset, version, min_count = loader.sha256(path), "SWOW-EN18", "1.0", loader.MIN_COUNT
+        if digest != loader.SWOW_SHA256:
+            typer.echo(f"error: {path} has SHA-256 {digest}, expected {loader.SWOW_SHA256} (the published release)",
+                       err=True)
+            raise typer.Exit(2)
+        typer.echo("reading the association-strength table ...")
+        links = loader.read_links(path)
     if force:
         memory.db.delete_graph(keys.POPULATION)
-    typer.echo("reading the association-strength table ...")
-    links = loader.read_links(path)
-    word_rows, link_rows = loader.select(links, clue_wordlist(), pool_words())
+    word_rows, link_rows = loader.select(links, clue_wordlist(), pool_words(), min_count=min_count)
     typer.echo(f"{len(links)} cue-response pairs read; loading {len(word_rows)} words, {len(link_rows)} links")
-    loader.load(memory.db, word_rows, link_rows, dataset="SWOW-EN18", version="1.0", digest=digest,
-                progress=typer.echo)
+    loader.load(memory.db, word_rows, link_rows, dataset=dataset, version=version, digest=digest,
+                min_count=min_count, progress=typer.echo)
     missing = [r[0] for r in word_rows if r[3] and not r[1]]
     typer.echo(f"done. board words that are not SWOW cues: {len(missing)}")
     if vectors:
