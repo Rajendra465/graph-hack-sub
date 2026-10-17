@@ -3,7 +3,7 @@
 Graph model (one graph per key):
   (:Word {text, cue, clue, pool, bias})
   (:Word)-[:ASSOC {p, n, pp, hits, misses, learned}]->(:Word)
-  (:Partner {id, direct, reverse, chain, games, turns, updated})          partner keys only
+  (:Partner {id, direct, reverse, chain, shared, games, turns, updated})  partner keys only
   (:Game {id, seed, condition, by, turns, won})-[:HAS]->(:Turn {n, clue, count, board, feats, by, ev})
   (:Turn)-[:INTENDED]->(:Word)   (:Turn)-[:GUESSED {order, outcome}]->(:Word)   (:Turn)-[:BY]->(:Agent {id})
   (:Source {dataset, version, sha256, loaded_at, words, links, min_count})
@@ -83,6 +83,20 @@ WHERE s >= $floor
 RETURN cw AS clue, word, s
 """
 
+# Score, step 4: shared associates, clue -> m <- word ("both make people think of m").
+# Similarity through shared associates predicts relatedness better than direct links
+# (De Deyne et al.); it is how embedding-like partners see words.
+SHARED = """
+UNWIND $board AS bw
+MATCH (t:Word) WHERE t.text = bw
+WITH t, bw
+MATCH (t)-[r2:ASSOC]->(m:Word)<-[r1:ASSOC]-(c:Word)
+WHERE c.text IN $clues AND c <> t AND m <> c
+WITH c.text AS clue, bw AS word, sum(coalesce(r1.pp, r1.p) * coalesce(r2.pp, r2.p)) AS s
+WHERE s >= $floor
+RETURN clue, word, s
+"""
+
 # One clue (any word) against the board: direct and reverse links in one round trip.
 CLUE_LINKS = """
 MATCH (c:Word {text: $clue})
@@ -123,13 +137,13 @@ SET r.pp = (r.p + $gain * coalesce(r.hits, 0)) * pow($decay, r.misses)
 
 PARTNER_SET = """
 MERGE (p:Partner {id: $id})
-SET p.direct = $direct, p.reverse = $reverse, p.chain = $chain,
+SET p.direct = $direct, p.reverse = $reverse, p.chain = $chain, p.shared = $shared,
     p.games = $games, p.turns = $turns, p.updated = $updated
 """
 
 PARTNER_GET = """
 MATCH (p:Partner)
-RETURN p.id AS id, p.direct AS direct, p.reverse AS reverse, p.chain AS chain,
+RETURN p.id AS id, p.direct AS direct, p.reverse AS reverse, p.chain AS chain, p.shared AS shared,
        p.games AS games, p.turns AS turns, p.updated AS updated
 """
 
@@ -216,6 +230,7 @@ ALL = {
     "direct": DIRECT,
     "reverse": REVERSE,
     "chain": CHAIN,
+    "shared": SHARED,
     "clue_links": CLUE_LINKS,
     "path_to": PATH_TO,
     "learn_hits": LEARN_HITS,

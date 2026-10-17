@@ -1,9 +1,10 @@
 """How a partner picks words: a small model the clue-giver can learn from a diary.
 
-For a clue c and a board word w, the graph gives three link strengths:
+For a clue c and a board word w, the graph gives four link strengths:
   direct  = share of people who answer w when shown c       (c -> w)
   reverse = share of people who answer c when shown w       (w -> c)
   chain   = strongest two-step chain c -> m -> w            (product of shares)
+  shared  = shared associates c -> m <- w                   (sum over m of the products)
 A partner's pull towards w is  style . phi(strengths) + bias[w],  with phi(x) = log(1 + 100 x),
 and the partner picks among the unrevealed words with probability softmax(pull).
 
@@ -20,9 +21,10 @@ from typing import Mapping, Sequence
 
 import numpy as np
 
-FEATURES = ("direct", "reverse", "chain")
+FEATURES = ("direct", "reverse", "chain", "shared")
+K = len(FEATURES)
 PHI_SCALE = 100.0
-ZERO = (0.0, 0.0, 0.0)
+ZERO = (0.0, 0.0, 0.0, 0.0)
 
 
 def phi(x: np.ndarray) -> np.ndarray:
@@ -31,20 +33,24 @@ def phi(x: np.ndarray) -> np.ndarray:
 
 @dataclass(frozen=True)
 class Style:
-    direct: float = 1.5
-    reverse: float = 0.75
-    chain: float = 0.75
+    # Default: with direct = 1, picks are proportional to the share of people who give the
+    # word (phi ~ log p). People pick the most associated word rather than sampling, so the
+    # default is sharper (x3). Set on training board 1003, where a flatter default never trusted
+    # a two-word clue ("COIN 3 -> change, mint, round" only appears at this sharpness).
+    direct: float = 3.0
+    reverse: float = 1.5
+    chain: float = 1.5
+    shared: float = 1.5
 
     def vector(self) -> np.ndarray:
-        return np.array([self.direct, self.reverse, self.chain], dtype=float)
+        return np.array([self.direct, self.reverse, self.chain, self.shared], dtype=float)
 
     @classmethod
     def from_vector(cls, v: Sequence[float]) -> "Style":
-        d, r, c = (float(x) for x in v)
-        return cls(round(d, 4), round(r, 4), round(c, 4))
+        return cls(*(round(float(x), 4) for x in v))
 
     def as_dict(self) -> dict[str, float]:
-        return {"direct": self.direct, "reverse": self.reverse, "chain": self.chain}
+        return {"direct": self.direct, "reverse": self.reverse, "chain": self.chain, "shared": self.shared}
 
 
 DEFAULT_STYLE = Style()
@@ -56,7 +62,7 @@ class PartnerModel:
     bias: Mapping[str, float] = field(default_factory=lambda: MappingProxyType({}))
 
     def pull(self, strengths: np.ndarray, words: Sequence[str]) -> np.ndarray:
-        """strengths: (n_words, 3) raw link strengths, rows aligned with words."""
+        """strengths: (n_words, K) raw link strengths, rows aligned with words."""
         base = phi(strengths) @ self.style.vector()
         if not self.bias:
             return base
@@ -89,7 +95,7 @@ def choices_from_turn(board: Sequence[str], strengths: Mapping[str, Sequence[flo
 def _pack(choices: Sequence[Choice], index: Mapping[str, int]):
     width = max(len(c.words) for c in choices)
     n = len(choices)
-    feats = np.zeros((n, width, 3))
+    feats = np.zeros((n, width, len(FEATURES)))
     mask = np.zeros((n, width), dtype=bool)
     ids = np.zeros((n, width), dtype=int)
     chosen = np.zeros(n, dtype=int)
@@ -123,7 +129,7 @@ def fit(choices: Sequence[Choice], prior: Style = DEFAULT_STYLE, *, style_streng
     m = np.zeros_like(params)
     v = np.zeros_like(params)
     for t in range(1, steps + 1):
-        theta, bias = params[:3], params[3:]
+        theta, bias = params[:K], params[K:]
         p = _softmax(feats @ theta + bias[ids], mask)
         g_theta = (feats[rows, chosen] - np.einsum("nw,nwk->nk", p, feats)).sum(axis=0)
         g_theta -= style_strength * (theta - theta0)
@@ -135,8 +141,8 @@ def fit(choices: Sequence[Choice], prior: Style = DEFAULT_STYLE, *, style_streng
         m = 0.9 * m + 0.1 * grad
         v = 0.999 * v + 0.001 * grad * grad
         params = params + lr * (m / (1 - 0.9 ** t)) / (np.sqrt(v / (1 - 0.999 ** t)) + 1e-8)
-    style = Style.from_vector(params[:3])
-    bias = {w: round(float(params[3 + i]), 4) for w, i in index.items() if abs(params[3 + i]) >= 0.05}
+    style = Style.from_vector(params[:K])
+    bias = {w: round(float(params[K + i]), 4) for w, i in index.items() if abs(params[K + i]) >= 0.05}
     return PartnerModel(style, MappingProxyType(bias))
 
 

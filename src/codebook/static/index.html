@@ -47,7 +47,9 @@ main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); g
 .tile.keyed.assassin::before { background: var(--bomb); } .tile.keyed.neutral::before { background: var(--neutral); }
 .tile.target { outline: 3px solid var(--blue); outline-offset: -3px; }
 .tile.r-team { background: var(--blue); color: #fff; } .tile.r-opponent { background: var(--orange); color: #fff; }
-.tile.r-neutral { background: var(--neutral); color: var(--muted); } .tile.r-assassin { background: var(--bomb); color: #fff; }
+.tile.r-neutral { background: var(--neutral); color: var(--muted); }
+.tile.r-assassin { background: var(--bomb); color: #fff; border: 2px solid var(--orange-deep); box-shadow: 0 0 0 3px var(--orange); }
+.tile.r-assassin::after { content: "BOMB"; display: block; font-size: 10px; letter-spacing: 1.5px; color: var(--orange); margin-top: 2px; }
 .tile.clickable { cursor: pointer; } .tile.clickable:hover { transform: translateY(-2px); border-color: var(--blue); }
 .clue { display: flex; flex-wrap: wrap; gap: 14px; align-items: baseline; margin: 16px 0 6px; }
 .clue .word { font: 700 44px 'Rubik', Arial, sans-serif; letter-spacing: -1px; }
@@ -86,7 +88,7 @@ td.m { font-family: 'JetBrains Mono', monospace; }
 .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
 .opt { background: var(--bg); border-radius: 8px; padding: 8px; margin-bottom: 6px; font-size: 13px; }
 .opt b { font: 700 15px 'Rubik', Arial, sans-serif; }
-.muted { color: var(--muted); } .hidden { display: none; }
+.muted { color: var(--muted); } .hidden { display: none !important; }
 .your-turn { margin-top: 10px; display: flex; gap: 10px; align-items: center; font-weight: 700; }
 </style>
 </head>
@@ -133,7 +135,7 @@ td.m { font-family: 'JetBrains Mono', monospace; }
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const DEFAULT_STYLE = {direct: 1.5, reverse: 0.75, chain: 0.75};
+const DEFAULT_STYLE = {direct: 3.0, reverse: 1.5, chain: 1.5, shared: 1.5};
 let game = null, since = 0, timer = null, roles = {}, queries = [], partnersInfo = [];
 
 async function api(path, opts) {
@@ -146,10 +148,13 @@ async function api(path, opts) {
 async function loadPartners() {
   const j = await api('/api/partners');
   partnersInfo = j.partners;
+  const keepPartner = $('partner').value, keepMemory = $('memory').value;
   $('partner').innerHTML = j.available.map(p => `<option value="${esc(p)}">${p === 'you' ? 'you (play as guesser)' : esc(p)}</option>`).join('');
   const mem = $('memory');
   mem.innerHTML = '<option value="own">their own</option><option value="everyone">everyone\'s</option>' +
     j.partners.map(p => `<option value="${esc(p.id)}">${esc(p.id)}'s (swap)</option>`).join('');
+  if (keepPartner && j.available.includes(keepPartner)) $('partner').value = keepPartner;
+  if (keepMemory && [...mem.options].some(o => o.value === keepMemory)) mem.value = keepMemory;
 }
 
 function renderBoard(words, key) {
@@ -236,8 +241,8 @@ async function showMemory(pid) {
   if (!pid || pid === 'everyone') { $('tab-memory').innerHTML = '<div class="muted">Everyone\'s memory is shared and read-only.</div>'; return; }
   try {
     const m = await api('/api/memory/' + encodeURIComponent(pid));
-    const max = Math.max(3, ...Object.values(m.style).map(Math.abs));
-    const bars = ['direct', 'reverse', 'chain'].map(k => `<span>${k}</span><div class="bar"><i style="width:${Math.max(0, m.style[k]) / max * 100}%"></i><s style="left:${DEFAULT_STYLE[k] / max * 100}%"></s></div><span class="m">${m.style[k].toFixed(2)}</span>`).join('');
+    const max = Math.max(6, ...Object.values(m.style).map(Math.abs));
+    const bars = ['direct', 'reverse', 'chain', 'shared'].map(k => `<span>${k}</span><div class="bar"><i style="width:${Math.max(0, m.style[k]) / max * 100}%"></i><s style="left:${DEFAULT_STYLE[k] / max * 100}%"></s></div><span class="m">${m.style[k].toFixed(2)}</span>`).join('');
     $('tab-memory').innerHTML = `
       <div class="stats"><div class="stat"><b>${m.games}</b><span>games</span></div><div class="stat"><b>${m.turns}</b><span>clues</span></div>
       <div class="stat"><b>${m.learned_links}</b><span>links reweighted</span></div><div class="stat"><b>${m.mb ?? '–'}</b><span>MB in FalkorDB</span></div></div>

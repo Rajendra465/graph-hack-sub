@@ -136,6 +136,8 @@ def play(partner: str = typer.Option("glove", help="Who guesses"),
         from codebook.partners.llm import clue_chooser  # noqa: PLC0415
         chooser = clue_chooser(clue_giver, partner, with_suggestions=True)
 
+    out = sys.__stdout__  # the engine's prints are silenced during a game; ours go to the real terminal
+
     def show(event: dict) -> None:
         if as_json:
             return
@@ -143,12 +145,13 @@ def play(partner: str = typer.Option("glove", help="Who guesses"),
         if kind == "clue":
             o = event["option"]
             typer.echo(f"\nclue {event['turn']}: {o['clue'].upper()} {o['count']}  (by {event['proposed_by']}; "
-                       f"aiming at {', '.join(o['targets'])}; expected {o['expected_hits']}, bomb risk {o['p_assassin']})")
+                       f"aiming at {', '.join(o['targets'])}; expected {o['expected_hits']}, "
+                       f"bomb risk {o['p_assassin']})", file=out)
         elif kind == "block":
             typer.echo(f"  BLOCKED {event['clue'].upper()}: {' -> '.join(event['path']) or 'model'} "
-                       f"(strength {event['strength']}, bomb risk {event['p_assassin']})")
+                       f"(strength {event['strength']}, bomb risk {event['p_assassin']})", file=out)
         elif kind == "graded":
-            typer.echo("  guesses: " + ", ".join(f"{w} [{COLOUR[r]}]" for w, r in event["guesses"]))
+            typer.echo("  guesses: " + ", ".join(f"{w} [{COLOUR[r]}]" for w, r in event["guesses"]), file=out)
 
     gid = f"{partner}-play-{seed}"
     result, session = play_game(lambda ev: Session(memory, read_key, model, gid, seed, "play", ev,

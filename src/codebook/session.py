@@ -102,9 +102,14 @@ class Session:
         if len(self.turns) >= self.max_turns:
             raise TurnLimit(f"{self.game_id}: {self.max_turns} clues without finishing")
         n = len(self.turns) + 1
-        table = self.memory.features(self.read_key, self.board, self.model, allowed=self.allowed)
+        used = {t.clue for t in self.turns}
+
+        def allowed(word: str) -> bool:  # never repeat a clue within a game
+            return word not in used and self.allowed(word)
+
+        table = self.memory.features(self.read_key, self.board, self.model, allowed=allowed)
         seed = zlib.crc32(f"{self.game_id}:{n}".encode())
-        options = plan(self.board, table.rows, self.model, seed=seed, allowed=self.allowed, costs=self.costs)
+        options = plan(self.board, table.rows, self.model, seed=seed, allowed=allowed, costs=self.costs)
         candidates: list[tuple[Option, dict, str]] = []
         proposal = self.chooser(self.board, options[:10]) if self.chooser else None
         if proposal:

@@ -117,6 +117,7 @@ CN_FORWARD = {"IsA", "PartOf", "HasA", "UsedFor", "CapableOf", "AtLocation", "Ca
               "SymbolOf", "DefinedAs", "Entails", "InstanceOf"}
 CN_BOTH_WAYS = {"RelatedTo", "Synonym", "Antonym", "SimilarTo", "DistinctFrom", "LocatedNear"}
 CN_TOP = 60  # keep each cue's strongest responses, like SWOW's long-tailed response lists
+CN_SMOOTH = 5.0  # shrink shares for cues with few links (one link of three is not "33% of people")
 
 
 def _cn_term(uri: str) -> str | None:
@@ -155,7 +156,7 @@ def parse_conceptnet(lines: Iterable[str], top: int = CN_TOP, vocab: set[str] | 
     links: list[Link] = []
     for cue, row in weights.items():
         best = sorted(row.items(), key=lambda kv: (-kv[1], kv[0]))[:top]
-        total = sum(w for _, w in best)
+        total = sum(w for _, w in best) + CN_SMOOTH
         for resp, w in best:
             links.append(Link(cue, resp, max(1, round(w)), w / total))
     return links

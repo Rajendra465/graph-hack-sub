@@ -39,11 +39,13 @@ class Persona:
         return PartnerModel(self.style, MappingProxyType(self.favourite_words()))
 
 
+# Styles are sharp on purpose: the planted habit should decide most picks, with favourites
+# and a little noise on top, so we can check the memory recovers what we planted.
 PERSONAS = {
-    "persona-mirror": Persona("persona-mirror", Style(0.3, 2.2, 0.4), 25, 1.5, 0.3, 11,
-                              "planted test partner: reverse associations, 25 favourite words"),
-    "persona-leaper": Persona("persona-leaper", Style(0.6, 0.3, 2.4), 25, 1.5, 0.3, 23,
-                              "planted test partner: two-step chains, 25 favourite words"),
+    "persona-mirror": Persona("persona-mirror", Style(0.6, 6.0, 0.6, 0.6), 20, 1.0, 0.15, 11,
+                              "planted test partner: reverse associations, 20 favourite words"),
+    "persona-leaper": Persona("persona-leaper", Style(1.2, 0.6, 6.0, 1.2), 20, 1.0, 0.15, 23,
+                              "planted test partner: two-step chains, 20 favourite words"),
 }
 
 

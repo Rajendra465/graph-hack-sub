@@ -19,7 +19,7 @@ from codebook import cypher as C
 from codebook import keys
 from codebook.board import TEAM, BoardView, is_legal_clue
 from codebook.db import Db, DbError
-from codebook.model import DEFAULT_STYLE, Choice, PartnerModel, Style, choices_from_turn, fit
+from codebook.model import DEFAULT_STYLE, K, Choice, PartnerModel, Style, choices_from_turn, fit
 
 LEARN_GAIN = 0.05     # each graded pick adds 5 points of link strength for this partner
 LEARN_DECAY = 0.7     # each miss keeps 70% of it
@@ -43,7 +43,7 @@ def now() -> str:
 class FeatureTable:
     """Link strengths (direct, reverse, chain) from shortlisted clues to unrevealed words."""
 
-    rows: Mapping[str, Mapping[str, tuple[float, float, float]]]
+    rows: Mapping[str, Mapping[str, tuple[float, ...]]]
     ms: Mapping[str, float] = field(default_factory=dict)
 
 
@@ -54,7 +54,7 @@ class TurnRecord:
     count: int
     board: tuple[str, ...]
     intended: tuple[str, ...]
-    strengths: Mapping[str, tuple[float, float, float]]
+    strengths: Mapping[str, tuple[float, ...]]
     guesses: tuple[tuple[str, str], ...]   # (word, role) in the order they were picked
     by: str
     value: float = 0.0
@@ -120,9 +120,9 @@ class Memory:
         reverse = self.db.ro_query(key, C.REVERSE, params, name="reverse")
         rows: dict[str, dict[str, list[float]]] = {}
         for clue, word, s in direct.rows:
-            rows.setdefault(clue, {}).setdefault(word, [0.0, 0.0, 0.0])[0] = float(s)
+            rows.setdefault(clue, {}).setdefault(word, [0.0] * K)[0] = float(s)
         for clue, word, s in reverse.rows:
-            rows.setdefault(clue, {}).setdefault(word, [0.0, 0.0, 0.0])[1] = float(s)
+            rows.setdefault(clue, {}).setdefault(word, [0.0] * K)[1] = float(s)
         team = set(board.team)
         scored = []
         for clue, links in rows.items():
@@ -140,14 +140,19 @@ class Memory:
         chain = self.db.ro_query(key, C.CHAIN, {"clues": short, "board": words, "floor": CHAIN_FLOOR},
                                  name="chain") if short else None
         for clue, word, s in (chain.rows if chain else ()):
-            rows.setdefault(clue, {}).setdefault(word, [0.0, 0.0, 0.0])[2] = float(s)
+            rows.setdefault(clue, {}).setdefault(word, [0.0] * K)[2] = float(s)
+        shared = self.db.ro_query(key, C.SHARED, {"clues": short, "board": words, "floor": CHAIN_FLOOR},
+                                  name="shared") if short else None
+        for clue, word, s in (shared.rows if shared else ()):
+            rows.setdefault(clue, {}).setdefault(word, [0.0] * K)[3] = float(s)
         table = {c: MappingProxyType({w: tuple(v) for w, v in rows[c].items()}) for c in short}
-        ms = {"direct": direct.ms, "reverse": reverse.ms, "chain": chain.ms if chain else 0.0}
+        ms = {"direct": direct.ms, "reverse": reverse.ms, "chain": chain.ms if chain else 0.0,
+              "shared": shared.ms if shared else 0.0}
         return FeatureTable(MappingProxyType(table), MappingProxyType(ms))
 
-    def clue_strengths(self, key: str, clue: str, words: Sequence[str]) -> dict[str, tuple[float, float, float]]:
+    def clue_strengths(self, key: str, clue: str, words: Sequence[str]) -> dict[str, tuple[float, ...]]:
         """Strengths from one clue (any word) to the given board words."""
-        out = {w: [0.0, 0.0, 0.0] for w in words}
+        out = {w: [0.0] * K for w in words}
         links = self.db.ro_query(key, C.CLUE_LINKS, {"clue": clue, "board": list(words)}, name="clue_links")
         if links.rows:
             fwd, back = links.rows[0]
@@ -157,10 +162,11 @@ class Memory:
             for word, s in back:
                 if word is not None and s is not None:
                     out[word][1] = float(s)
-        res = self.db.ro_query(key, C.CHAIN, {"clues": [clue], "board": list(words), "floor": CHAIN_FLOOR},
-                               name="chain")
-        for _, word, s in res.rows:
+        params = {"clues": [clue], "board": list(words), "floor": CHAIN_FLOOR}
+        for _, word, s in self.db.ro_query(key, C.CHAIN, params, name="chain").rows:
             out[word][2] = float(s)
+        for _, word, s in self.db.ro_query(key, C.SHARED, params, name="shared").rows:
+            out[word][3] = float(s)
         return {w: tuple(v) for w, v in out.items()}
 
     def path_to(self, key: str, clue: str, target: str) -> tuple[list[str], float] | None:
@@ -177,7 +183,8 @@ class Memory:
         style = DEFAULT_STYLE
         if rows and rows[0]["direct"] is not None:
             r = rows[0]
-            style = Style(float(r["direct"]), float(r["reverse"]), float(r["chain"]))
+            style = Style(float(r["direct"]), float(r["reverse"]), float(r["chain"]),
+                          float(r["shared"] if r.get("shared") is not None else DEFAULT_STYLE.shared))
         bias = {w: float(b) for w, b in self.db.ro_query(key, C.BIAS_GET, name="bias_get").rows}
         return PartnerModel(style, MappingProxyType(bias))
 
@@ -185,8 +192,8 @@ class Memory:
         key = keys.partner_key(pid)
         rows = self.db.ro_query(key, C.PARTNER_GET, name="partner_get").records()
         r = rows[0] if rows else {}
-        style = Style(float(r.get("direct") or DEFAULT_STYLE.direct), float(r.get("reverse") or 0.0),
-                      float(r.get("chain") or 0.0)) if r else DEFAULT_STYLE
+        style = Style(*(float(r[f]) if r.get(f) is not None else getattr(DEFAULT_STYLE, f)
+                        for f in ("direct", "reverse", "chain", "shared"))) if r else DEFAULT_STYLE
         learned = self.db.ro_query(key, "MATCH ()-[r:ASSOC]->() WHERE r.hits > 0 OR r.misses > 0 RETURN count(r)",
                                    name="learned_count").scalar(0)
         return PartnerInfo(pid, key, style, int(r.get("games") or 0), int(r.get("turns") or 0), int(learned or 0),

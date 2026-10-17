@@ -8,7 +8,7 @@ def _simulate(model: PartnerModel, n: int, seed: int = 0) -> list[Choice]:
     words = tuple(f"w{i}" for i in range(12))
     out = []
     for _ in range(n):
-        x = rng.choice([0.0, 0.0, 0.01, 0.05, 0.2], size=(12, 3))
+        x = rng.choice([0.0, 0.0, 0.01, 0.05, 0.2], size=(12, 4))
         pull = model.pull(x, words)
         p = np.exp(pull - pull.max())
         p /= p.sum()
@@ -17,7 +17,7 @@ def _simulate(model: PartnerModel, n: int, seed: int = 0) -> list[Choice]:
 
 
 def test_fit_moves_style_towards_a_planted_partner():
-    planted = PartnerModel(Style(0.3, 2.2, 0.4))
+    planted = PartnerModel(Style(0.3, 2.2, 0.4, 0.2))
     train = _simulate(planted, 400, seed=1)
     learned = fit(train, DEFAULT_STYLE, style_strength=0.5)
     assert learned.style.reverse > learned.style.direct
@@ -29,7 +29,7 @@ def test_fit_moves_style_towards_a_planted_partner():
 
 def test_fit_learns_a_favourite_word():
     words = tuple(f"w{i}" for i in range(6))
-    zeros = np.zeros((6, 3))
+    zeros = np.zeros((6, 4))
     choices = [Choice(words, zeros, 3) for _ in range(40)]
     model = fit(choices)
     assert max(model.bias, key=model.bias.get) == "w3"
@@ -41,8 +41,8 @@ def test_fit_without_data_returns_the_prior():
 
 def test_choices_from_turn_shrinks_the_board_after_each_pick():
     board = ["a", "b", "c"]
-    strengths = {"a": (0.1, 0.0, 0.0), "b": (0.0, 0.2, 0.0)}
+    strengths = {"a": (0.1, 0.0, 0.0, 0.0), "b": (0.0, 0.2, 0.0, 0.0)}
     choices = choices_from_turn(board, strengths, ["b", "a"])
     assert [c.words for c in choices] == [("a", "b", "c"), ("a", "c")]
     assert [c.chosen for c in choices] == [1, 0]
-    assert choices[0].strengths[1].tolist() == [0.0, 0.2, 0.0]
+    assert choices[0].strengths[1].tolist() == [0.0, 0.2, 0.0, 0.0]
