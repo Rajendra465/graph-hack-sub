@@ -3,7 +3,7 @@
 This file is committed before any test board is played with real word data. The git history
 shows its timestamp. Results are reported against it, including every promise that fails.
 
-## Amendment, 2026-10-17 17:20 IST (before any test run with real word data)
+## Amendment, 2026-10-17 17:00 IST (before any test run with real word data)
 
 The original test boards were seeds 5000-5199. While SWOW-EN18 was unavailable, pilot runs on the
 ConceptNet fallback used seeds 5000-5059 to tune the clue-giver (default sharpness, a shared-associates
