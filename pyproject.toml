@@ -1,0 +1,40 @@
+[project]
+name = "codebook"
+version = "0.1.0"
+description = "An AI clue-giver that keeps a memory of each partner in FalkorDB: it learns how you link words, remembers it next session, and hands it to another AI."
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Codebook contributors" }]
+keywords = ["agents", "memory", "falkordb", "graph", "codenames", "mcp"]
+dependencies = [
+  "redis>=5.0",
+  "typer>=0.12",
+  "numpy>=1.26,<2",
+  "scipy>=1.11,<1.14",
+  "gensim>=4.3.2",
+  "nltk>=3.8",
+  "colorama>=0.4",
+  "starlette>=0.37",
+  "uvicorn>=0.29",
+  "mcp>=1.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+codebook = "codebook.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/codebook"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "contract: needs a live FalkorDB 6.0.2 (CODEBOOK_TEST_PORT, default 6390)",
+]

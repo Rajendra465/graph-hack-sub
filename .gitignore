@@ -1,0 +1,9 @@
+# Word data is fetched at setup under its own licence and never committed.
+data/
+results/runs/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+.coverage

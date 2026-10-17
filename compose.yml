@@ -1,0 +1,25 @@
+# FalkorDB pinned to 6.0.2. Local default: bound to 127.0.0.1 with no password.
+# Partner memories persist in the codebook_data volume (append-only file on).
+name: codebook
+services:
+  falkordb:
+    image: falkordb/falkordb:6.0.2
+    restart: unless-stopped
+    ports:
+      - "${CODEBOOK_BIND:-127.0.0.1}:${CODEBOOK_DB_PORT:-6390}:6379"
+    environment:
+      # Replaces the stock module arguments; keep all four.
+      FALKORDB_ARGS: "MAX_QUEUED_QUERIES 1000 TIMEOUT_DEFAULT 30000 TIMEOUT_MAX 120000 RESULTSET_SIZE 1000000"
+      # run.sh expands REDIS_ARGS unquoted: no quotes inside.
+      REDIS_ARGS: "--appendonly yes --appendfsync everysec ${CODEBOOK_REDIS_AUTH_ARGS:-}"
+      BROWSER: "0"
+    volumes:
+      - codebook_data:/var/lib/falkordb/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "PING"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s
+volumes:
+  codebook_data: {}
