@@ -70,9 +70,24 @@ appear in the same contexts. Nobody told Codebook that.
 
 ## Results
 
-_Being filled in from the re-run (`final-20261017-1941-v2`). A code review of our own harness found two bugs
-in the first run (a hidden forfeit rule, and AI set-ups that could borrow Codebook's clue), so the whole
-pre-registered benchmark runs again; both are written up in [EVAL.md](EVAL.md)._
+The evaluation was written down and committed before the first test run ([EVAL.md](EVAL.md)), including a stop
+rule: if a partner's own memory didn't beat everyone's memory for either competition bot, we'd say the idea
+failed. We also had to re-run it once: a code review of our own harness found a hidden forfeit rule and an AI
+set-up that could borrow Codebook's clue, so we fixed both, wrote down why, and started over.
+
+On 200 boards each partner never saw (everyone's memory here is ConceptNet 5.7):
+
+| Partner | Everyone's memory | Your memory | Wrong memory |
+|---|---|---|---|
+| word2vec bot | 15.6 turns, 33% bomb | **14.4 turns, 21% bomb** | 15.3 |
+| GloVe bot | 15.7, 35% bomb | 15.6, 32% bomb | 15.0 |
+| planted backwards thinker | 6.6 | **5.6** | 6.9 |
+| planted two-step jumper | 6.7 | **6.4** | 7.2 |
+
+A partner's own memory beat everyone's for three of four partners, and beat the wrong partner's memory for the
+same three (paired by board, 95% intervals below zero). GloVe is the honest exception: no significant difference.
+A quarter of the bots' picks have no link to the clue in everyone's memory at all, which is a ceiling for any
+word-association model of an embedding.
 
 ## Five things we learned about FalkorDB 6.0.2
 
