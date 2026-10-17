@@ -19,11 +19,12 @@ Graph Hacks 2026, **Track 02: Agent Memory and Coordination**.
 
 | What Codebook needs | How FalkorDB does it |
 |---|---|
-| Everyone's memory: ~12,000 cue words, hundreds of thousands of weighted human word links | one graph, `codebook:population` |
-| Score a clue by every one- and two-step chain to each board word, many times per turn | Cypher traversals over the link graph (`DIRECT`, `REVERSE`, `CHAIN`, `PATH_TO`) |
-| A separate, persistent memory per partner that starts as a copy of everyone's | each partner is its own graph key, made with `GRAPH.COPY` (~290 ms, ~18 MB at SWOW scale) |
+| Everyone's memory: tens of thousands of words and half a million weighted links (SWOW-EN18 human associations, or ConceptNet 5.7) | one graph, `codebook:population` |
+| Score a clue by every direct, reverse, two-step and shared link to each board word, every turn | Cypher traversals over the link graph (`DIRECT`, `REVERSE`, `CHAIN`, `SHARED`, `PATH_TO`) |
+| A separate, persistent memory per partner that starts as a copy of everyone's | each partner is its own graph key, made with `GRAPH.COPY` (0.7 s and 44 MB at 497k links) |
 | Partners must not read or write each other's memory | Redis ACL users with a selector per partner key |
 | Survive restarts and hand a memory from one AI to another | it is a key on the server; any process that is allowed to open it gets the same memory |
+| Carry a memory to another server | `DUMP`/`RESTORE`: one partner's memory is an 11 MB file, indexes included |
 
 Remove FalkorDB and nothing runs: there is no in-memory fallback. With the server stopped, every
 command exits with an error that names FalkorDB.
@@ -39,7 +40,7 @@ command exits with an error that names FalkorDB.
 
 Every turn:
 
-1. **Suggest**: Cypher reads four kinds of link between each candidate clue and every unrevealed word,
+1. **Find**: Cypher reads four kinds of link between each candidate clue and every unrevealed word,
    in the memory being used: **direct** (clue → word), **reverse** (word → clue), **chain** (clue → m → word)
    and **shared associates** (clue → m ← word: both make people think of m).
 2. **Score**: a small partner model turns those links into a "pull" towards each board word
@@ -65,24 +66,25 @@ default of 1.5); without it, the learner never sees the difference.
 ```cypher
 (:Word {text, cue, clue, pool, bias})
 (:Word)-[:ASSOC {p, n, pp, hits, misses, learned}]->(:Word)
-(:Partner {id, direct, reverse, chain, games, turns, updated})          // partner keys only
+(:Partner {id, direct, reverse, chain, shared, games, turns, updated})  // partner keys only
 (:Game {id, seed, condition, by, turns, won})-[:HAS]->(:Turn {n, clue, count, board, feats, by, ev})
 (:Turn)-[:INTENDED]->(:Word)   (:Turn)-[:GUESSED {order, outcome}]->(:Word)   (:Turn)-[:BY]->(:Agent {id})
 (:Source {dataset, version, sha256, loaded_at, words, links, min_count})
 CREATE INDEX FOR (w:Word) ON (w.text)
 ```
 
-- `p`: share of people who gave this response to the cue (SWOW R123 strength); `n`: how many.
+- `p`: share of people who gave this response to the cue (SWOW R123 strength; with ConceptNet, the edge's
+  share of the cue's weight); `n`: how many.
 - `pp`: this partner's weight for the link; absent in everyone's memory; written only by learning.
 - Keys: `codebook:population` (never written after setup) and `codebook:partner:<id>` (the only keys written).
 
 ## The Cypher
 
 Every statement lives in [`src/codebook/cypher.py`](src/codebook/cypher.py), and the live view shows each
-one as it runs, with its key, row count and time. The core three:
+one as it runs, with its key, row count and time. The core ones:
 
 ```cypher
-// Suggest/score, step 1: clue words with a link into each board word
+// Find: clue words with a link into each board word (bind the indexed word first, then traverse)
 UNWIND $board AS bw
 MATCH (t:Word) WHERE t.text = bw
 WITH t, bw
@@ -90,7 +92,17 @@ MATCH (c:Word)-[r:ASSOC]->(t)
 WHERE c.clue AND coalesce(r.pp, r.p) > 0
 RETURN c.text AS clue, bw AS word, coalesce(r.pp, r.p) AS s
 
-// Score, step 3: strongest two-step chain from each shortlisted clue to every board word
+// Shared associates: clue -> m <- word, summed over m
+UNWIND $board AS bw
+MATCH (t:Word) WHERE t.text = bw
+WITH t, bw
+MATCH (t)-[r2:ASSOC]->(m:Word)<-[r1:ASSOC]-(c:Word)
+WHERE c.text IN $clues AND c <> t AND m <> c
+WITH c.text AS clue, bw AS word, sum(coalesce(r1.pp, r1.p) * coalesce(r2.pp, r2.p)) AS s
+WHERE s >= $floor
+RETURN clue, word, s
+
+// Two-step chains from each shortlisted clue to every board word
 UNWIND $clues AS cw
 MATCH (c:Word) WHERE c.text = cw
 WITH c, cw
@@ -155,15 +167,26 @@ Needs Docker, [uv](https://docs.astral.sh/uv/) and Python 3.11 or 3.12.
 git clone [repo URL] && cd codebook
 docker compose up -d                          # FalkorDB 6.0.2 on 127.0.0.1:6390, data in a volume
 uv sync --extra dev
-# Word data: download SWOW-EN18.zip from https://smallworldofwords.org/en/project/research
-# (accept its CC BY-NC-ND licence) and save it as data/SWOW-EN18.zip. Setup checks its SHA-256.
-uv run codebook setup --vectors               # build everyone's memory + the bot partners' vectors
+# Everyone's memory, either:
+#   SWOW-EN18 (human associations): download SWOW-EN18.zip from https://smallworldofwords.org/en/project/research
+#   (accept its CC BY-NC-ND licence), save it as data/SWOW-EN18.zip, then:  uv run codebook setup --vectors
+#   or ConceptNet 5.7 (no form; 498 MB download), save it under data/conceptnet/, then:
+#   uv run codebook setup --source conceptnet --vectors
+uv run codebook train glove --games 20        # 20 practice games build the GloVe bot's memory
 uv run codebook play --partner glove          # watch one game in the terminal
 uv run codebook ui                            # live view on http://127.0.0.1:7811
 ```
 
-Other commands: `codebook train --partner glove --games 20`, `codebook status`, `codebook reset <partner>`,
-`codebook acl <partner>`, `codebook eval`, `codebook mcp`.
+| Command | What it does |
+|---|---|
+| `codebook status` | everyone's memory and every partner memory on the server (games, clues, style, size) |
+| `codebook train <partner>` | practice games with learning on (and probing) |
+| `codebook play --partner P --memory own\|everyone\|<other>` | one seeded game, every clue, pick and block printed |
+| `codebook replay --partner P` | fingerprint of frozen-memory games: run, restart FalkorDB, run again |
+| `codebook export P` / `codebook import file --as Q` | carry a memory to another server (DUMP/RESTORE) |
+| `codebook acl P` | a database user locked to this partner's key |
+| `codebook eval` / `codebook report <run>` | the benchmark and its scorecard |
+| `codebook ui` / `codebook mcp` | the live view / the MCP server for agents |
 
 **Use it from any agent (MCP).** `claude mcp add codebook -- uv --directory <repo> run codebook mcp`
 gives an agent six tools: `list_partners`, `suggest_clues`, `check_clue`, `record_turn`, `end_game`,

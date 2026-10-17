@@ -25,7 +25,7 @@ def _git_commit() -> str:
 
     try:
         out = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10)
-        dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, timeout=10).stdout
+        dirty = subprocess.run(["git", "status", "--porcelain", "--untracked-files=no"], capture_output=True, text=True, timeout=10).stdout
         return out.stdout.strip() + ("-dirty" if dirty.strip() else "")
     except (OSError, subprocess.SubprocessError):
         return "unknown"
