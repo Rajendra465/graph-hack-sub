@@ -56,8 +56,13 @@ def setup(swow: Path = typer.Option(None, help="Path to SWOW-EN18.zip (default: 
     if source == "conceptnet":
         path = settings.data_dir / "conceptnet" / loader.CONCEPTNET_FILE
         if not path.exists():
-            typer.echo(f"error: {path} not found; download {loader.CONCEPTNET_URL}", err=True)
-            raise typer.Exit(2)
+            import urllib.request  # noqa: PLC0415
+
+            path.parent.mkdir(parents=True, exist_ok=True)
+            typer.echo(f"downloading {loader.CONCEPTNET_URL} (498 MB, CC BY-SA 4.0) ...")
+            part = path.with_suffix(".part")
+            urllib.request.urlretrieve(loader.CONCEPTNET_URL, part)
+            part.replace(path)
         digest, dataset, version, min_count = loader.sha256(path), "ConceptNet", "5.7.0", 1
         if digest != loader.CONCEPTNET_SHA256:
             typer.echo(f"error: {path} has SHA-256 {digest}, expected {loader.CONCEPTNET_SHA256}", err=True)

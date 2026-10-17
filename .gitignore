@@ -1,6 +1,8 @@
 # Word data is fetched at setup under its own licence and never committed.
 data/
-results/runs/
+# pilot runs stay local; the final runs' game logs are published so every game can be checked
+results/runs/*
+!results/runs/final-*/
 .venv/
 __pycache__/
 *.pyc

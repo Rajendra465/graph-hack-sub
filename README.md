@@ -173,11 +173,9 @@ Needs Docker, [uv](https://docs.astral.sh/uv/) and Python 3.11 or 3.12.
 git clone [repo URL] && cd codebook
 docker compose up -d                          # FalkorDB 6.0.2 on 127.0.0.1:6390, data in a volume
 uv sync --extra dev
-# Everyone's memory, either:
-#   SWOW-EN18 (human associations): download SWOW-EN18.zip from https://smallworldofwords.org/en/project/research
-#   (accept its CC BY-NC-ND licence), save it as data/SWOW-EN18.zip, then:  uv run codebook setup --vectors
-#   or ConceptNet 5.7 (no form; 498 MB download), save it under data/conceptnet/, then:
-#   uv run codebook setup --source conceptnet --vectors
+uv run codebook setup --source conceptnet --vectors   # downloads ConceptNet 5.7 (498 MB) and the bots' vectors
+# or, for human word associations: download SWOW-EN18.zip from https://smallworldofwords.org/en/project/research
+# (it asks you to accept CC BY-NC-ND), save it as data/SWOW-EN18.zip, and run: uv run codebook setup --vectors
 uv run codebook train glove --games 20        # 20 practice games build the GloVe bot's memory
 uv run codebook play --partner glove          # watch one game in the terminal
 uv run codebook ui                            # live view on http://127.0.0.1:7811
