@@ -205,9 +205,33 @@ boards (seeds 1000-1019) and are tested on boards they never saw (6000-6199), wi
 
 ## Results
 
-The final benchmark is being re-run (`final-20261017-1941-v2`) after a code review found two harness bugs in
-the first run: a hidden forfeit rule and AI set-ups that could borrow Codebook's clue. See
-[EVAL.md, amendment 2](EVAL.md). The scorecard below will come only from the re-run.
+Run `final-20261017-1941-v2` (`scripts/final_run.sh`; every stage's commit is stamped in
+`results/runs/<run>/plan.jsonl`; every game is in `results/runs/<run>/games.jsonl`). Everyone's memory:
+**ConceptNet 5.7** (SWOW-EN18 needs a licence form; the code supports both). 200 test boards per set-up
+(seeds 6000-6199) that no partner saw in training; memories frozen. Turns to finish, lower is better; a lost
+game counts 25 (the engine's rule). Differences are paired by board with a 95% bootstrap interval; "better" means
+the whole interval is below zero. Full report: [`results/final-20261017-1941-v2.md`](results/final-20261017-1941-v2.md).
+
+| Partner | Everyone's memory | Your memory | Wrong memory | Yours vs everyone's | Yours vs wrong |
+|---|---|---|---|---|---|
+| word2vec bot (competition) | 15.55 turns, 33% bomb | **14.39, 21% bomb** | 15.31 (GloVe's) | **−1.16 [−2.23, −0.07] better** | **−0.92 [−1.72, −0.16] better** |
+| GloVe bot (competition) | 15.75, 35% bomb | 15.64, 32% bomb | 15.02 (word2vec's) | −0.11 [−1.08, +0.87] | +0.63 [−0.12, +1.36] |
+| Test partner A (planted: backwards links) | 6.60, 1% bomb | **5.63, 0% bomb** | 6.93 (B's) | **−0.98 [−1.28, −0.74] better** | **−1.30 [−1.87, −0.81] better** |
+| Test partner B (planted: two-step chains) | 6.66, 0.5% bomb | **6.36, 0.5% bomb** | 7.19 (A's) | **−0.30 [−0.56, −0.03] better** | **−0.83 [−1.43, −0.26] better** |
+
+What this says, plainly:
+
+- **A partner's own memory beat everyone's memory for three of four partners.** For the word2vec bot it cut bomb
+  hits from 33% to 21% and won 78% of games instead of 68%.
+- **The memory is about the partner.** Each memory beat the wrong partner's memory for word2vec and both planted
+  partners.
+- **GloVe is the exception.** Its own memory made no significant difference, and it did slightly (not
+  significantly) better with word2vec's memory. In practice games, 25% of GloVe's picks and 23% of word2vec's had
+  no link to the clue at all in everyone's memory (1-2% for the planted partners), so part of what drives an
+  embedding is out of reach of a word-association graph.
+
+_Learning curve, Claude as a partner, the AI clue-giver set-ups and the promise count: being filled in from the
+same run._
 
 ## AI use
 
