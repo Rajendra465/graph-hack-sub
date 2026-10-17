@@ -99,7 +99,7 @@ td.m { font-family: 'JetBrains Mono', monospace; }
     <label>Partner<select id="partner"></select></label>
     <label>Memory<select id="memory"><option value="own">their own</option><option value="everyone">everyone's</option></select></label>
     <label>Board seed<input id="seed" type="number" value="5000" style="width:96px"></label>
-    <label>Clue-giver<select id="giver"><option value="codebook">Codebook</option><option value="claude">Claude (+memory)</option><option value="codex">Codex (+memory)</option></select></label>
+    <label>Clue-giver<select id="giver"><option value="codebook">Codebook</option><option value="claude-sonnet">Claude Sonnet (+memory)</option><option value="claude">Claude Haiku (+memory)</option><option value="codex">Codex (+memory)</option></select></label>
     <label>Learn<input id="learn" type="checkbox"></label>
     <label>Speed<select id="delay"><option value="1.2">slow</option><option value="0.5" selected>normal</option><option value="0">fast</option></select></label>
     <button id="start">Start game</button>
@@ -128,7 +128,7 @@ td.m { font-family: 'JetBrains Mono', monospace; }
     </div>
     <div id="tab-queries"><div class="muted" id="qsum">Queries for the current game appear here, newest first.</div><div id="qlist"></div></div>
     <div id="tab-memory" class="hidden"></div>
-    <div id="tab-compare" class="hidden"><div class="muted">Top clues for this board from each memory.</div><div id="cmp"></div></div>
+    <div id="tab-compare" class="hidden"><div class="muted">Top clues for this board from each memory. <input id="cmpmems" placeholder="everyone,w2v,persona-leaper" style="width:260px"> <button class="ghost" id="cmpgo">Compare</button></div><div id="cmp"></div></div>
     <div id="tab-all" class="hidden"></div>
   </section>
 </main>
@@ -255,7 +255,8 @@ async function showMemory(pid) {
 }
 
 async function compare() {
-  const mems = ['everyone', ...partnersInfo.map(p => p.id)].slice(0, 4);
+  const typed = ($('cmpmems').value || '').split(',').map(x => x.trim()).filter(Boolean);
+  const mems = typed.length ? typed : ['everyone', ...partnersInfo.map(p => p.id).filter(id => !/-at\d+$/.test(id))].slice(0, 4);
   try {
     const j = await api(`/api/suggest?seed=${+$('seed').value}&memories=${mems.map(encodeURIComponent).join(',')}`);
     $('cmp').innerHTML = `<div class="cols">${Object.entries(j.by_memory).map(([mem, opts]) => `<div><h4 style="margin:10px 0 6px">${esc(mem)}</h4>${opts.slice(0, 3).map(o => `<div class="opt"><b>${esc(o.clue.toUpperCase())} ${o.count}</b><br><span class="muted">${esc(o.targets.join(', '))} · exp ${o.expected_hits}</span></div>`).join('')}</div>`).join('')}</div>`;
@@ -273,6 +274,7 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
 });
 $('start').onclick = start;
 $('endturn').onclick = () => guess(null);
+$('cmpgo').onclick = compare;
 loadPartners().then(allQueries).catch(e => { $('gameinfo').textContent = 'Server error: ' + e.message; });
 </script>
 </body>
