@@ -1,0 +1,28 @@
+== FalkorDB stopped (2026-10-17T16:56:38Z): every command must fail and name FalkorDB
+ok   exit 2   codebook setup --source conceptnet
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 2   codebook status
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 2   codebook play --partner glove
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 2   codebook train removal-test --games 1
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 2   codebook replay --partner glove --games 1
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 2   codebook eval --partners glove --train 1 --test 1
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 2   codebook report <latest run>
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 2   codebook export glove
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 2   codebook import removal-test.codebook
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 2   codebook acl removal-test
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 2   codebook reset removal-test
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 2   codebook ui
+      error: FalkorDB unreachable: Error 10061 connecting to 127.0.0.1:6390. No connection could be made because the
+ok   exit 1   MCP tool list_partners
+      error: FalkorDB is unreachable; Codebook has no fallback store
+13 / 13 commands failed loudly and named FalkorDB; nothing fell back

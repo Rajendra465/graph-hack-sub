@@ -1,0 +1,48 @@
+== before restart (2026-10-17T16:46:57Z)
+memory codebook:partner:glove: 20 games, 192 clues, 266 links reweighted, style {'direct': 0.7415, 'reverse': 0.9416, 'chain': 1.525, 'shared': 2.1927}
+  board 6000: won in 11 turns
+  board 6001: won in 9 turns
+  board 6002: lost in 25 turns
+  board 6003: lost in 25 turns
+  board 6004: won in 9 turns
+  board 6005: lost in 25 turns
+  board 6006: won in 12 turns
+  board 6007: lost in 25 turns
+  board 6008: lost in 25 turns
+  board 6009: won in 9 turns
+  board 6010: won in 11 turns
+  board 6011: lost in 25 turns
+  board 6012: lost in 25 turns
+  board 6013: won in 10 turns
+  board 6014: won in 8 turns
+  board 6015: lost in 25 turns
+  board 6016: won in 14 turns
+  board 6017: lost in 25 turns
+  board 6018: lost in 25 turns
+  board 6019: won in 22 turns
+fingerprint 86311cdd8d209a53 over 20 games
+== docker compose restart falkordb
+== after restart, new process (2026-10-17T16:51:26Z)
+memory codebook:partner:glove: 20 games, 192 clues, 266 links reweighted, style {'direct': 0.7415, 'reverse': 0.9416, 'chain': 1.525, 'shared': 2.1927}
+  board 6000: won in 11 turns
+  board 6001: won in 9 turns
+  board 6002: lost in 25 turns
+  board 6003: lost in 25 turns
+  board 6004: won in 9 turns
+  board 6005: lost in 25 turns
+  board 6006: won in 12 turns
+  board 6007: lost in 25 turns
+  board 6008: lost in 25 turns
+  board 6009: won in 9 turns
+  board 6010: won in 11 turns
+  board 6011: lost in 25 turns
+  board 6012: lost in 25 turns
+  board 6013: won in 10 turns
+  board 6014: won in 8 turns
+  board 6015: lost in 25 turns
+  board 6016: won in 14 turns
+  board 6017: lost in 25 turns
+  board 6018: lost in 25 turns
+  board 6019: won in 22 turns
+fingerprint 86311cdd8d209a53 over 20 games
+SAME MEMORY AFTER RESTART: fingerprint 86311cdd8d209a53

@@ -193,6 +193,7 @@ uv run codebook ui                            # live view on http://127.0.0.1:78
 | `codebook acl P` | a database user locked to this partner's key |
 | `codebook eval` / `codebook report <run>` | the benchmark and its scorecard |
 | `codebook ui` / `codebook mcp` | the live view / the MCP server for agents |
+| `bash scripts/persistence_check.sh glove 20` / `bash scripts/removal_check.sh` | the restart and removal controls (the second stops FalkorDB, then starts it again) |
 
 **Use it from any agent (MCP).** `claude mcp add codebook -- uv --directory <repo> run codebook mcp`
 gives an agent six tools: `list_partners`, `suggest_clues`, `check_clue`, `record_turn`, `end_game`,
@@ -245,6 +246,13 @@ three times; the plain AI's 263 clues were all its own.
 | 3. The handover beats the same AI alone (GloVe) | **Not kept**: −0.82 turns, interval crosses zero |
 | 4. No more bomb hits than the plain AI (GloVe, same 40 boards) | **Kept**: 35% vs 40% |
 
+| Control (also written in [EVAL.md](EVAL.md) before testing) | Result |
+|---|---|
+| Planted habits found: is the learned style closer to the planted one than the default is (cosine)? | **Yes for both**: backwards thinker 0.87 vs 0.52, two-step jumper 0.75 vs 0.62 |
+| Planted favourite words found: how many of the 20 are in the learned top 20? (chance: about 1) | 3 of 20 for each. Only 13 and 15 of the 20 ever came up on a practice board, so 20 games are too few to find most of them |
+| Persistence: 20 GloVe games, `docker compose restart`, a fresh process, the same 20 games | **Same clues and outcomes**: fingerprint `86311cdd8d209a53` before and after ([log](results/persistence-glove.txt)) |
+| Removal: FalkorDB stopped | **13 of 13**: every command and the MCP tools exit with an error naming FalkorDB; nothing falls back ([log](results/removal-check.txt)) |
+
 What this says, plainly:
 
 - **A partner's own memory beat everyone's memory, and beat the wrong partner's memory, for three of four bot and
@@ -263,8 +271,8 @@ What this says, plainly:
 
 Built with Claude Code (Claude Opus) as the coding assistant: research, code, tests, documentation, the
 pitch deck and the demo recording script. Inside the product, Claude Haiku (guesser) and Claude Sonnet
-(clue-giver) play through Claude Code's headless mode, and a Codex CLI adapter is included, through their
-command-line tools.
+(clue-giver) play through Claude Code's headless mode (`claude -p`), and a Codex CLI adapter is included as
+another in-product partner; Codex did not write code for this project. Neither AI gets database access.
 
 ## Limits, stated plainly
 
@@ -273,8 +281,9 @@ command-line tools.
   instead, and results say which one they used.
 - AI partners may think much like the average person, so most of the statistical power comes from the
   competition's own word-vector guessers and the planted test partners.
-- The partner model is small (three style weights plus per-word favourites plus reweighted links). It learns
-  what it can see in 20 games; it is not a theory of how people think.
+- The partner model is small (four style weights plus per-word favourites plus reweighted links). It learns
+  what it can see in 20 games, which is enough for a habit and too little for most favourite words; it is not a
+  theory of how people think.
 
 ## Credits
 

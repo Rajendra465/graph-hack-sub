@@ -10,3 +10,9 @@ __pycache__/
 *.egg-info/
 .coverage
 results/*.log
+
+# local crash dumps and tool databases
+*.stackdump
+ruvector.db
+*.codebook
+demo/

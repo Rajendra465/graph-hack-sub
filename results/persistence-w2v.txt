@@ -1,0 +1,28 @@
+== before restart (2026-10-17T16:43:33Z)
+memory codebook:partner:w2v: 20 games, 200 clues, 267 links reweighted, style {'direct': 0.8592, 'reverse': 0.9531, 'chain': 0.7525, 'shared': 2.008}
+  board 6000: won in 10 turns
+  board 6001: won in 11 turns
+  board 6002: won in 13 turns
+  board 6003: won in 9 turns
+  board 6004: won in 11 turns
+  board 6005: won in 13 turns
+  board 6006: won in 8 turns
+  board 6007: won in 11 turns
+  board 6008: won in 16 turns
+  board 6009: won in 11 turns
+fingerprint 8d4ea3c3c80f6c92 over 10 games
+== docker compose restart falkordb
+== after restart, new process (2026-10-17T16:45:20Z)
+memory codebook:partner:w2v: 20 games, 200 clues, 267 links reweighted, style {'direct': 0.8592, 'reverse': 0.9531, 'chain': 0.7525, 'shared': 2.008}
+  board 6000: won in 10 turns
+  board 6001: won in 11 turns
+  board 6002: won in 13 turns
+  board 6003: won in 9 turns
+  board 6004: won in 11 turns
+  board 6005: won in 13 turns
+  board 6006: won in 8 turns
+  board 6007: won in 11 turns
+  board 6008: won in 16 turns
+  board 6009: won in 11 turns
+fingerprint 8d4ea3c3c80f6c92 over 10 games
+SAME MEMORY AFTER RESTART: fingerprint 8d4ea3c3c80f6c92
