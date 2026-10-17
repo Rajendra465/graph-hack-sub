@@ -9,7 +9,7 @@ memory to another AI. One memory per partner, each its own graph in FalkorDB.
 
 **Links**
 - Repository: [repo URL]
-- Demo video (3 min): [video URL]
+- Demo video (2:19, captioned): [video URL]
 - Pitch deck: [deck link]
 
 **Short description (≈60 words)**
