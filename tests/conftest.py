@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import os
 
-import pytest
+os.environ["CODEBOOK_KEY_PREFIX"] = "cbtest:"  # before any codebook import: tests never share key names
 
-from codebook import config
-from codebook.db import Db, DbError
+import pytest  # noqa: E402
+
+from codebook import config, keys  # noqa: E402
+from codebook.db import Db, DbError  # noqa: E402
 
 TEST_DB_INDEX = os.environ.get("CODEBOOK_TEST_DB_INDEX", "15")
 
@@ -32,7 +34,7 @@ def db(test_settings) -> Db:
 
 def wipe(d: Db) -> None:
     for key in d.graph_keys():
-        if key.startswith("codebook:"):
+        if key.startswith(keys.PREFIX):
             d.delete_graph(key)
 
 

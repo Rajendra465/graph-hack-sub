@@ -7,11 +7,17 @@
 
 from __future__ import annotations
 
+import os
 import re
 
-PREFIX = "codebook:"
-POPULATION = "codebook:population"
-PARTNER_PREFIX = "codebook:partner:"
+# Tests and pilots run with their own prefix (e.g. "cbtest:") so they never share a graph name
+# with real memories: on 6.0.2 a same-named graph being re-created in another Redis database
+# can abort a running write ("graph was deleted or replaced while the query was running").
+PREFIX = os.environ.get("CODEBOOK_KEY_PREFIX", "codebook:")
+if not re.match(r"^[a-z][a-z0-9_-]{0,15}:$", PREFIX):
+    raise ValueError(f"CODEBOOK_KEY_PREFIX must look like 'name:', got {PREFIX!r}")
+POPULATION = PREFIX + "population"
+PARTNER_PREFIX = PREFIX + "partner:"
 
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,47}$")
 
