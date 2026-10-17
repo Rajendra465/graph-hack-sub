@@ -101,6 +101,7 @@ td.m { font-family: 'JetBrains Mono', monospace; }
     <label>Board seed<input id="seed" type="number" value="5000" style="width:96px"></label>
     <label>Clue-giver<select id="giver"><option value="codebook">Codebook</option><option value="claude-sonnet">Claude Sonnet (+memory)</option><option value="claude">Claude Haiku (+memory)</option><option value="codex">Codex (+memory)</option></select></label>
     <label>Learn<input id="learn" type="checkbox"></label>
+    <label title="With an AI clue-giver: take its clues from the final run's log, so the logged game replays live">Replay log<input id="replay" type="checkbox"></label>
     <label>Speed<select id="delay"><option value="1.2">slow</option><option value="0.5" selected>normal</option><option value="0">fast</option></select></label>
     <button id="start">Start game</button>
   </div>
@@ -169,17 +170,28 @@ function renderBoard(words, key) {
   document.querySelectorAll('.tile.clickable').forEach(t => t.onclick = () => guess(t.dataset.w));
 }
 
+function gameInfo(seed, partner, readKey, bench, replay) {
+  return `Board ${num(seed)} · partner <b>${esc(partner)}</b> · memory <b>${esc(readKey)}</b>` +
+    (bench ? ` · same set-up as benchmark game <b>${esc(bench)}</b>${replay ? " (the AI's clues come from the log)" : ''}` : '');
+}
+
+function endStatus(j) {  // plain text: the caller sets textContent
+  if (j.status === 'error') return j.error;
+  const s = j.status === 'won' ? `Won in ${num(j.result.turns)} turns` : `Lost (${j.result.assassin ? 'bomb' : 'turn limit or opponent'})`;
+  return s + (j.matches_log === true ? ' · matches the benchmark log' : j.matches_log === false ? ' · differs from the benchmark log' : '');
+}
+
 async function start() {
   clearInterval(timer);
   $('blocks').innerHTML = ''; $('log').innerHTML = ''; $('qlist').innerHTML = ''; queries = [];
   $('clueword').innerHTML = '&nbsp;'; $('cluemeta').textContent = ''; $('status').textContent = '';
   const body = {partner: $('partner').value, memory: $('memory').value, seed: +$('seed').value,
-    clue_giver: $('giver').value, learn: $('learn').checked, delay: +$('delay').value};
+    clue_giver: $('giver').value, learn: $('learn').checked, replay: $('replay').checked, delay: +$('delay').value};
   try {
     const j = await api('/api/game', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
     game = j.game; since = 0;
     renderBoard(j.words, j.key);
-    $('gameinfo').innerHTML = `Board ${num(body.seed)} · partner <b>${esc(body.partner)}</b> · memory <b>${esc(j.read_key)}</b>`;
+    $('gameinfo').innerHTML = gameInfo(body.seed, body.partner, j.read_key, j.benchmark_game, j.replay);
     timer = setInterval(poll, 400);
     if (body.partner !== 'you') showMemory(body.memory === 'own' ? body.partner : body.memory);
     compare();
@@ -192,7 +204,7 @@ async function poll() {
   for (const ev of j.events) { since = ev.i + 1; handle(ev); }
   if (j.status !== 'running') {
     clearInterval(timer);
-    $('status').textContent = j.status === 'error' ? j.error : (j.status === 'won' ? `Won in ${num(j.result.turns)} turns` : `Lost (${j.result.assassin ? 'bomb' : 'turn limit or opponent'})`);
+    $('status').textContent = endStatus(j);
     $('status').className = 'status ' + j.status;
     $('yourturn').classList.add('hidden');
     const p = $('partner').value; if (p !== 'you') showMemory($('memory').value === 'own' ? p : $('memory').value);
@@ -260,6 +272,11 @@ async function compare() {
   const mems = typed.length ? typed : ['everyone', ...partnersInfo.map(p => p.id).filter(id => !/-at\d+$/.test(id))].slice(0, 4);
   try {
     const j = await api(`/api/suggest?seed=${+$('seed').value}&memories=${mems.map(encodeURIComponent).join(',')}`);
+    if (!game && $('partner').value !== 'you') {  // no game on screen: show the board being compared
+      const keyName = {team: 'Red', opponent: 'Blue', neutral: 'Civilian', assassin: 'Assassin'};
+      renderBoard(j.board.map(w => w.toLowerCase()), j.roles.map(r => keyName[r]));
+      $('gameinfo').innerHTML = `Board ${num(+$('seed').value)} · the key as the clue-giver sees it`;
+    }
     $('cmp').innerHTML = `<div class="cols">${Object.entries(j.by_memory).map(([mem, opts]) => `<div><h4 style="margin:10px 0 6px">${esc(mem)}</h4>${opts.slice(0, 3).map(o => `<div class="opt"><b>${esc(o.clue.toUpperCase())} ${num(o.count)}</b><br><span class="muted">${esc(o.targets.join(', '))} · exp ${num(o.expected_hits)}</span></div>`).join('')}</div>`).join('')}</div>`;
   } catch (e) { $('cmp').innerHTML = `<div class="muted">${esc(e.message)}</div>`; }
 }
@@ -291,9 +308,9 @@ async function fromUrl() {
     game = q.get('game'); since = 0;
     const j = await api(`/api/game/${encodeURIComponent(game)}?since=0`);
     $('partner').value = j.partner; $('seed').value = j.seed; renderBoard(j.words, j.key);
-    $('gameinfo').innerHTML = `Board ${num(j.seed)} · partner <b>${esc(j.partner)}</b> · memory <b>${esc(j.read_key)}</b>`;
+    $('gameinfo').innerHTML = gameInfo(j.seed, j.partner, j.read_key, j.benchmark_game, j.replay);
     for (const ev of j.events) { since = ev.i + 1; handle(ev); }
-    if (j.status !== 'running') { $('status').textContent = j.status === 'won' ? `Won in ${num(j.result.turns)} turns` : j.status; $('status').className = 'status ' + j.status; }
+    if (j.status !== 'running') { $('status').textContent = endStatus(j); $('status').className = 'status ' + j.status; }
     else timer = setInterval(poll, 400);
   }
   if (q.get('mem')) await showMemory(q.get('mem'));

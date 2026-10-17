@@ -27,10 +27,12 @@ from codebook import config, keys
 from codebook import cypher as C
 from codebook.board import BoardView
 from codebook.db import Db, DbError, QueryEvent
+from codebook.evaluate import benchmark_game_id
 from codebook.harness import board_for_seed, engine, play
 from codebook.memory import Memory
 from codebook.partners import ALL as PARTNER_IDS
 from codebook.partners import make_partner
+from codebook.replay import live_condition, logged_chooser, logged_game, same_moves
 from codebook.session import Session, TurnLimit
 from codebook.spymaster import plan
 
@@ -63,6 +65,14 @@ class LiveGame:
     result: dict | None = None
     error: str = ""
     inbox: "queue.Queue[str | None]" = field(default_factory=queue.Queue)
+    condition: str | None = None    # the benchmark set-up this game repeats, if any (see codebook.replay)
+    logged: dict | None = None      # that set-up's logged game on this board
+    replay: bool = False            # an AI clue-giver's clues come from `logged`
+    matches_log: bool | None = None  # at the end: did the live game make the logged game's moves?
+
+    @property
+    def benchmark_game(self) -> str | None:
+        return benchmark_game_id(self.partner, self.condition, self.seed) if self.logged else None
 
     def add(self, event: dict) -> None:
         with self.lock:
@@ -117,24 +127,50 @@ class LiveApp:
             raise ValueError(f"seed must be between 0 and {MAX_SEED}")
         if learn and memory_of != "own":
             raise ValueError("learning writes only to the partner's own memory")
-        if memory_of == "everyone":
-            read_key = keys.POPULATION
-        elif memory_of == "own":
-            read_key = self.memory.ensure_partner(partner)
-        else:
-            read_key = keys.partner_key(memory_of)
+        if memory_of not in ("everyone", "own"):
+            read_key = keys.partner_key(memory_of)  # validates the id
             if not self.db.exists(read_key):
                 raise ValueError(f"no memory for {memory_of!r}")
+        replay = body.get("replay") is True
+        condition = live_condition(partner, memory_of, clue_giver, learn=learn, replay=replay)
+        if replay and condition != "handover":
+            raise ValueError("a replay takes an AI clue-giver's clues from the benchmark log: choose an AI "
+                             "clue-giver, the partner's own memory, and learning off")
+        logged = self._logged(partner, condition, seed, clue_giver, required=replay)
         if not self.running.acquire(blocking=False):
             raise OverflowError(f"{MAX_RUNNING} games are already running; try again shortly")
-        words, key = board_for_seed(seed)
-        game = LiveGame(f"live-{next(self.ids)}-{partner}-{seed}", partner, memory_of, read_key, seed,
-                        str(body.get("mode", "watch")), learn, clue_giver, delay, words, key)
-        self.games[game.gid] = game
-        for old in [g for g in list(self.games)[:-MAX_KEPT] if self.games[g].status != "running"]:
-            self.games.pop(old, None)
-        threading.Thread(target=self._run, args=(game,), daemon=True, name=game.gid).start()
+        try:  # from here on a failure must give the slot back
+            if memory_of == "everyone":
+                read_key = keys.POPULATION
+            elif memory_of == "own":
+                read_key = self.memory.ensure_partner(partner)
+            words, key = board_for_seed(seed)
+            game = LiveGame(f"live-{next(self.ids)}-{partner}-{seed}", partner, memory_of, read_key, seed,
+                            str(body.get("mode", "watch")), learn, clue_giver, delay, words, key,
+                            condition=condition if logged else None, logged=logged, replay=replay)
+            self.games[game.gid] = game
+            for old in [g for g in list(self.games)[:-MAX_KEPT] if self.games[g].status != "running"]:
+                self.games.pop(old, None)
+            threading.Thread(target=self._run, args=(game,), daemon=True, name=game.gid).start()
+        except BaseException:
+            self.running.release()
+            raise
         return game
+
+    def _logged(self, partner: str, condition: str | None, seed: int, clue_giver: str, *,
+                required: bool) -> dict | None:
+        """The benchmark game a live game repeats. Only a replay needs one; other games just play live."""
+        if condition is None:
+            return None
+        try:
+            row = logged_game(self.settings.results_dir, partner, condition, seed, clue_giver)
+        except ValueError:
+            if required:
+                raise
+            return None
+        if required and row is None:
+            raise ValueError(f"no game {benchmark_game_id(partner, condition, seed)} in the latest run's log")
+        return row
 
     def _guesser_class(self, game: LiveGame):
         if game.partner != HUMAN:
@@ -175,10 +211,14 @@ class LiveApp:
             guesser_class, knows = self._guesser_class(game)
             model = self.memory.model(game.read_key)
             write_key = game.read_key if game.learn and keys.partner_of(game.read_key) else None
-            chooser = None
-            if game.clue_giver != "codebook":
+            chooser, chooser_name = None, ""
+            if game.replay:
+                chooser, chooser_name = logged_chooser(game.logged, game.clue_giver), f"{game.clue_giver} (from the log)"
+            elif game.clue_giver != "codebook":
                 from codebook.partners.llm import clue_chooser  # noqa: PLC0415
-                chooser = clue_chooser(game.clue_giver, game.partner, with_suggestions=True)
+                chooser, chooser_name = clue_chooser(game.clue_giver, game.partner, with_suggestions=True), game.clue_giver
+            # The game id seeds Codebook's sampling: a benchmark set-up reuses the logged game's id.
+            session_id = game.benchmark_game or game.gid
 
             def on_event(ev: dict) -> None:
                 game.add(ev)
@@ -191,16 +231,19 @@ class LiveApp:
                     time.sleep(game.delay * 0.6)
 
             game.add({"kind": "start", "partner": game.partner, "memory_of": game.memory_of,
-                      "read_key": game.read_key, "model": self.memory.model(game.read_key).style.as_dict()})
-            result, session = play(lambda evs: Session(self.memory, game.read_key, model, game.gid, game.seed,
-                                                       "live", evs, write_key=write_key, learn=game.learn,
-                                                       allowed=knows, chooser=chooser,
-                                                       chooser_name=game.clue_giver if chooser else "",
-                                                       on_event=on_event),
-                                   guesser_class, game.seed, game.gid, quiet=False, on_guess=on_guess)
+                      "read_key": game.read_key, "model": self.memory.model(game.read_key).style.as_dict(),
+                      "benchmark_game": game.benchmark_game, "replay": game.replay})
+            result, session = play(lambda evs: Session(self.memory, game.read_key, model, session_id, game.seed,
+                                                       game.condition or "live", evs, write_key=write_key,
+                                                       learn=game.learn, allowed=knows, chooser=chooser,
+                                                       chooser_name=chooser_name, on_event=on_event),
+                                   guesser_class, game.seed, session_id, quiet=False, on_guess=on_guess)
             game.result = result.as_dict()
+            if game.logged is not None:  # a changed memory (a learning game since) makes a replay differ
+                game.matches_log = same_moves(game.result.get("clues", []), game.logged.get("clues", []))
             game.status = "won" if result.won else "lost"
-            game.add({"kind": "end", "won": result.won, "turns": result.turns, "assassin": result.assassin})
+            game.add({"kind": "end", "won": result.won, "turns": result.turns, "assassin": result.assassin,
+                      "matches_log": game.matches_log})
         except Exception as exc:  # noqa: BLE001 - report any failure to the page, loudly
             game.status, game.error = "error", f"{type(exc).__name__}: {exc}"
             game.add({"kind": "error", "error": game.error})
@@ -274,7 +317,7 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
         except (DbError, ValueError, OSError) as exc:
             return ok({"error": str(exc)}, 400)
         return ok({"game": game.gid, "words": [w.lower() for w in game.words], "key": game.key,
-                   "read_key": game.read_key})
+                   "read_key": game.read_key, "benchmark_game": game.benchmark_game, "replay": game.replay})
 
     def game_state(request: Request):
         game = live.games.get(request.path_params["gid"])
@@ -283,7 +326,8 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
         since = int(request.query_params.get("since", 0))
         return ok({"status": game.status, "error": game.error, "events": game.since(since),
                    "result": game.result, "partner": game.partner, "seed": game.seed, "read_key": game.read_key,
-                   "words": [w.lower() for w in game.words], "key": game.key})
+                   "words": [w.lower() for w in game.words], "key": game.key,
+                   "benchmark_game": game.benchmark_game, "replay": game.replay, "matches_log": game.matches_log})
 
     async def guess(request: Request):
         game = live.games.get(request.path_params["gid"])

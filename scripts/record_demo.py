@@ -50,11 +50,11 @@ CARD = """([title, body, mono]) => {
 UNCARD = "() => { const el = document.getElementById('demo-card'); if (el) el.remove(); }"
 
 # The speed menu offers slow/normal/fast; add the requested delay as an option if it is not one of them.
-START = """([p, m, s, d, g]) => {
+START = """([p, m, s, d, g, r]) => {
   const delay = document.getElementById('delay');
   if (![...delay.options].some(o => o.value === d)) delay.add(new Option(d + ' s', d));
   document.getElementById('partner').value = p; document.getElementById('memory').value = m;
-  document.getElementById('seed').value = s; delay.value = d;
+  document.getElementById('seed').value = s; delay.value = d; document.getElementById('replay').checked = r;
   document.getElementById('giver').value = g; document.getElementById('start').click(); }"""
 
 
@@ -112,12 +112,17 @@ def block_caption(row: dict | None) -> str:
             f"{b['path'][-1].upper()}, the bomb.")
 
 
+def bomb_rate(rows: list[dict], partner: str, condition: str) -> str:
+    games = [r for r in rows if r["partner"] == partner and r["condition"] == condition]
+    return f"{sum(r['assassin'] for r in games) / max(1, len(games)):.0%}"
+
+
 def play_live(page: Page, *, partner: str, memory: str, seed: int, delay: float, caption: str,
-              max_s: float, giver: str = "codebook", end_caption: str | None = None) -> dict:
+              max_s: float, giver: str = "codebook", replay: bool = False, end_caption: str | None = None) -> dict:
     """Start a game from the page's own controls and let it play on screen."""
     page.goto(f"{BASE}/?tab=queries")
     page.wait_for_function("document.getElementById('partner').options.length > 1")
-    page.evaluate(START, [partner, memory, str(seed), str(delay), giver])
+    page.evaluate(START, [partner, memory, str(seed), str(delay), giver, replay])
     page.evaluate(CAPTION, caption)
     started = time.time()
     while time.time() - started < max_s:
@@ -131,6 +136,16 @@ def play_live(page: Page, *, partner: str, memory: str, seed: int, delay: float,
         page.evaluate(CAPTION, end_caption.replace("{status}", status or "still playing"))
         page.wait_for_timeout(4500)
     return {"status": status, "seconds": round(time.time() - started, 1)}
+
+
+def persistence_text(path: Path) -> str:
+    """The restart check's verdict lines: before, the restart, after, and the comparison."""
+    if not path.exists():
+        return "(run scripts/persistence_check.sh)"
+    lines = path.read_text(encoding="utf-8").splitlines()
+    memory = next((line for line in lines if line.startswith("memory ")), "")
+    keep = [line for line in lines if line.startswith(("==", "fingerprint", "SAME", "DIFFERENT"))]
+    return "\n".join([memory.split(", style")[0], *keep])
 
 
 def scorecard_text(path: Path) -> str:
@@ -162,37 +177,49 @@ def main() -> None:
     out.mkdir(parents=True, exist_ok=True)
     run = args.run or Path("results/LATEST_RUN").read_text(encoding="utf-8").strip()
     rows = run_rows(run)
-    timings = {}
+    timings, marks = {}, {}
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch(channel="chrome", headless=True, args=["--force-dark-mode"])
         ctx = browser.new_context(viewport={"width": W, "height": H}, record_video_dir=str(out),
                                   record_video_size={"width": W, "height": H}, color_scheme="dark")
         page = ctx.new_page()
+        t0 = time.time()  # the recording starts with the page
 
+        def mark(scene: str) -> None:
+            marks[scene] = round(time.time() - t0, 1)
+
+        mark("title")
         page.goto(f"{BASE}/")
         page.evaluate(CARD, ["Codebook", "An AI teammate that learns how you think, remembers it next session, "
                              "and can hand that memory to another AI. Every partner gets their own memory: "
                              "a graph in FalkorDB.", False])
         page.wait_for_timeout(6000)
 
+        mark("compare")
         memories = ["everyone", "w2v", "persona-mirror"]
         caption = compare_caption(args.compare_seed, memories)
-        page.goto(f"{BASE}/?tab=compare&seed={args.compare_seed}&memories={','.join(memories)}")
+        page.goto(f"{BASE}/?tab=compare&seed={args.compare_seed}&memories={','.join(memories)}&mem=w2v")
         page.wait_for_selector("#cmp .opt", timeout=60000)
         page.evaluate(CAPTION, caption)
         page.wait_for_timeout(11000)
 
-        caption = style_caption("w2v")
-        page.goto(f"{BASE}/?tab=memory&mem=w2v")
+        # Same board on the left; the right panel switches to the word2vec bot's memory.
+        mark("memory")
+        page.evaluate("() => { document.getElementById('partner').value = 'w2v';"
+                      " document.querySelector('.tabs button[data-tab=memory]').click(); }")
         page.wait_for_selector(".bars", timeout=60000)
-        page.evaluate(CAPTION, caption)
+        page.evaluate(CAPTION, style_caption("w2v"))
         page.wait_for_timeout(11000)
 
-        timings["block"] = play_live(page, partner="w2v", memory="own", seed=args.game_seed, delay=0.5, max_s=90,
-                                     caption=block_caption(logged(rows, "w2v", "warm", args.game_seed)),
-                                     end_caption="The word2vec bot with its own memory: {status}.")
+        mark("restart")
+        page.evaluate(CARD, ["Memory survives a restart", persistence_text(Path(args.persistence)), True])
+        page.evaluate(CAPTION, "We restarted FalkorDB. A fresh process replayed the same games with the same "
+                               "fingerprint: the memory came back from the database, not from our process.")
+        page.wait_for_timeout(12000)
+        page.evaluate(UNCARD)
 
+        mark("swap")
         partner = NAMES.get(args.swap_partner, args.swap_partner)
         timings["swap-own"] = play_live(
             page, partner=args.swap_partner, memory="own", seed=args.swap_seed, delay=0.5, max_s=45,
@@ -203,30 +230,32 @@ def main() -> None:
             caption=f"Part 2: the same board and the same code, but {memory_label(args.swap_memory)}.",
             end_caption="The wrong memory: {status}. The memory is about this partner, not a better general model.")
 
-        proof = Path(args.persistence)
-        body = proof.read_text(encoding="utf-8")[-1400:] if proof.exists() else "(run scripts/persistence_check.sh)"
-        page.evaluate(CARD, ["Memory survives a restart", body, True])
-        page.evaluate(CAPTION, "We restarted FalkorDB. A fresh process replayed the same games with the same "
-                               "fingerprint: the memory came back from the database, not from our process.")
-        page.wait_for_timeout(12000)
-        page.evaluate(UNCARD)
+        mark("block")
+        timings["block"] = play_live(page, partner="w2v", memory="own", seed=args.game_seed, delay=0.5, max_s=90,
+                                     caption=block_caption(logged(rows, "w2v", "warm", args.game_seed)),
+                                     end_caption="The word2vec bot with its own memory: {status}.")
 
+        mark("handover")
         hp = args.handover_partner
         plain = logged(rows, hp, "plain", args.handover_seed)
-        hand = logged(rows, hp, "handover", args.handover_seed)
-        own = (hand or {}).get("clues_by", {}).get(args.handover_giver, 0)
-        total = sum((hand or {}).get("clues_by", {}).values())
         timings["handover"] = play_live(
-            page, partner=hp, memory="own", seed=args.handover_seed, delay=0.5, max_s=75, giver=args.handover_giver,
-            caption=f"Handover: Claude Sonnet now gives the clues to {NAMES.get(hp, hp)}, choosing from its memory "
-                    "through Codebook's tools. It holds no database password, and the block still has the final say.",
-            end_caption=f"In the benchmark, on this board: Claude Sonnet alone {outcome(plain)}; with "
-                        f"{memory_label(hp)} it {outcome(hand)}, {own} of {total} clues its own.")
+            page, partner=hp, memory="own", seed=args.handover_seed, delay=0.9, max_s=90, giver=args.handover_giver,
+            replay=True,
+            caption=f"Handover, replayed from the benchmark log: the clues Claude Sonnet gave {NAMES.get(hp, hp)} on "
+                    "this board, choosing from its memory through Codebook's tools. The engine, the bot and every "
+                    "check run live.",
+            end_caption=f"{{status}}. On this board Claude Sonnet alone {outcome(plain)}. Over the "
+                        f"{sum(r['partner'] == hp and r['condition'] == 'handover' for r in rows)} benchmark boards, "
+                        f"bomb hits: {bomb_rate(rows, hp, 'plain')} alone, {bomb_rate(rows, hp, 'handover')} with "
+                        "the memory.")
 
+        mark("scorecard")
         page.evaluate(CARD, ["The scorecard", scorecard_text(Path(f"results/{run}.json")), True])
         page.evaluate(CAPTION, "Promises written down before testing, scored by the unmodified Codenames AI "
                                "Competition engine on boards the partners never saw.")
         page.wait_for_timeout(13000)
+        mark("end")
+        page.evaluate("() => { const el = document.getElementById('demo-caption'); if (el) el.remove(); }")
         page.evaluate(CARD, ["Every partner gets their own codebook.",
                              "Codebook · FalkorDB 6.0.2 · Graph Hacks 2026, Track 02 · open source (MIT)", False])
         page.wait_for_timeout(5000)
@@ -237,7 +266,7 @@ def main() -> None:
     mp4 = out / "codebook-demo.mp4"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(video), "-c:v", "libx264", "-pix_fmt", "yuv420p",
                     "-crf", "20", "-movflags", "+faststart", str(mp4)], check=True)
-    print(json.dumps(timings))
+    print(json.dumps({"games": timings, "scene_starts_s": marks}))
     print(f"wrote {mp4}")
 
 

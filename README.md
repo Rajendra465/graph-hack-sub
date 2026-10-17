@@ -192,7 +192,7 @@ uv run codebook ui                            # live view on http://127.0.0.1:78
 | `codebook export P` / `codebook import file --as Q` | carry a memory to another server (DUMP/RESTORE) |
 | `codebook acl P` | a database user locked to this partner's key |
 | `codebook eval` / `codebook report <run>` | the benchmark and its scorecard |
-| `codebook ui` / `codebook mcp` | the live view / the MCP server for agents |
+| `codebook ui` / `codebook mcp` | the live view (any benchmark board replays its logged game) / the MCP server for agents |
 | `bash scripts/persistence_check.sh glove 20` / `bash scripts/removal_check.sh` | the restart and removal controls (the second stops FalkorDB, then starts it again) |
 
 **Use it from any agent (MCP).** `claude mcp add codebook -- uv --directory <repo> run codebook mcp`
@@ -214,6 +214,9 @@ Everyone's memory: **ConceptNet 5.7** (SWOW-EN18 needs a licence form; the code 
 (seeds 6000-6199) were never seen in training; memories frozen. Turns to finish, lower is better; a lost game
 counts 25 (the engine's rule). Differences are paired by board with a 95% bootstrap interval; "better" means the
 whole interval is below zero. Full report: [`results/final-20261017-1941-v2.md`](results/final-20261017-1941-v2.md).
+**Every test game replays in the live view**: pick the partner, the memory and the board seed, and the live game
+repeats the logged one move for move (for an AI clue-giver, tick "Replay log" and its logged clues are used, while
+the engine, the partner and every check run live).
 
 | Partner | Boards | Everyone's memory | Your memory | Wrong memory | Yours vs everyone's | Yours vs wrong |
 |---|---|---|---|---|---|---|

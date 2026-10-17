@@ -1,25 +1,24 @@
-# Demo video: shot list (3 minutes)
+# Demo video (2:19)
 
-Everything on screen is live: the unmodified engine deals each board from its seed, and the right-hand
-panel of the live view shows every Cypher statement as FalkorDB runs it. The boards below come from the final
-run's game log (`results/runs/final-20261017-1941-v2/games.jsonl`), so each scene is a recorded result you can
-replay.
+`demo/codebook-demo.mp4` is recorded from the live view by `scripts/record_demo.py`: real games on the
+unmodified engine, captioned, no narration. Every game in it uses a board and a set-up from the final run, so
+the live view repeats the logged game move for move and says so ("matches the benchmark log"); the handover
+replays Claude Sonnet's logged clues, because a model never answers the same way twice. Every caption that quotes
+a clue or a result reads it from the live view or from `results/runs/final-20261017-1941-v2/games.jsonl`.
 
-Before recording: `docker compose up -d`, `uv run codebook status` (memories built), `uv run codebook ui`,
-browser at http://127.0.0.1:7811.
+To record it: `docker compose up -d`, `uv run codebook ui`, then
+`uv run --with playwright python scripts/record_demo.py --out demo` (needs Google Chrome and ffmpeg; the first
+run asks for `uv run --with playwright playwright install ffmpeg`).
 
-A captioned version with no narration is recorded automatically:
-`uv run --with playwright python scripts/record_demo.py --out demo` (writes `demo/codebook-demo.mp4`; every
-caption that quotes a clue or a result reads it from the live view or the game log).
-
-| Time | Scene | On screen | Say |
+| Time | Scene | On screen | Say (for a narrated version) |
 |---|---|---|---|
-| 0:00-0:20 | Hook | A board; Codebook gives a clue; the partner guesses | "AI teammates forget you every session. People don't: they build a private shorthand. Codebook gives an AI clue-giver one memory per partner, in FalkorDB." |
-| 0:20-0:45 | Same board, different partners | "Compare memories" tab on board 6042 with `everyone,w2v,persona-mirror`: SKY 2 vs MIDDLE 1 vs PLACE 3. Then "Partner memory": word2vec's bars (shared associates high, two-step chains low) | "Same board, different clue, because each partner's memory is its own graph. Codebook learned that the word2vec bot links words by shared associates, not the way people do." |
-| 0:45-1:10 | Memory across sessions | Terminal: `bash scripts/persistence_check.sh glove 20`: 20 games, `docker compose restart`, a fresh process, the same 20 games, fingerprint `86311cdd8d209a53` both times. Then `codebook export glove` | "Restart the database and a fresh process plays the same games, fingerprint for fingerprint: the memory lives in FalkorDB, not in our process. And a memory is a file you can carry to another server." |
-| 1:10-1:35 | The swap | Live view, board 6141, partner persona-mirror: its own memory wins in 4 turns; memory "persona-leaper's" walks into the bomb | "Same code, same board, wrong partner's memory: it misreads the partner. The memory is about this partner, not a better general model." |
-| 1:35-1:55 | The block | Live view, board 6183, partner w2v, own memory: "Blocked GLOBE: globe → ROUND (the bomb)"; Live Cypher tab, the `path_to` query | "A tempting clue is refused before it is given: in this partner's memory, GLOBE leads straight to ROUND, the bomb. Code has the final say, and here is the exact query that found it." |
-| 1:55-2:25 | Handover | Clue-giver "Claude Sonnet (+memory)", partner GloVe, board 6030. In the benchmark on this board, Sonnet alone hit the bomb; with GloVe's memory it won in 8 turns, every clue its own | "Another AI gives the clues now, choosing from this partner's memory through Codebook's tools. It never sees a database password, and the block still applies." |
-| 2:25-3:00 | Your turn, then the score | Partner "you", learn on: three clues, click guesses; Partner memory tab updates. Last frame: the scorecard, 3 of 4 promises kept | "Play three rounds and your own memory appears. On boards it never saw, here is what partner memory changed, against promises we wrote down before testing, including the one we didn't keep." |
+| 0:00-0:22 | Same board, different partners | Title, then "Compare memories" on board 6042: everyone's memory says SKY 2, the word2vec bot's MIDDLE 1, the backwards thinker's PLACE 3 | "AI teammates forget you every session. Codebook gives an AI clue-giver one memory per partner, in FalkorDB. Same board, three memories, three different clues." |
+| 0:22-0:33 | What the memory learned | "Partner memory": the word2vec bot links words mostly by shared associates (2.0), least by two-step chains (0.8) | "Nobody told it: after 20 practice games, the memory learned how this partner links words." |
+| 0:33-0:45 | Memory across sessions | 20 GloVe games, `docker compose restart`, a fresh process, the same 20 games: fingerprint `86311cdd8d209a53` both times | "Restart the database and the same memory comes back: it lives in FalkorDB, not in our process." |
+| 0:45-1:10 | The swap | Board 6141, a planted partner: its own memory wins in 4 turns; the wrong partner's memory hits the bomb on the first clue | "Same code, same board, the wrong partner's memory: it misreads the partner. The memory is about this partner." |
+| 1:10-1:33 | The block | Board 6183, the word2vec bot's own memory: "Blocked GLOBE: globe → round reaches the bomb", every Cypher query on the right; won in 10 turns | "A tempting clue is refused before it is given. Code has the final say, and here is every query FalkorDB ran." |
+| 1:33-1:57 | Handover | Board 6030, Claude Sonnet's logged clues with the GloVe bot's memory: won in 8 turns; Sonnet alone hit the bomb on this board; over 40 boards, bomb hits 40% alone and 22% with the memory | "Another AI gives the clues, choosing from this partner's memory through Codebook's tools, with no database password." |
+| 1:57-2:19 | The score | The scorecard: 3 of 4 promises kept, then the closing card | "Promises written down before testing, scored by the unmodified engine on boards the partners never saw, including the one we didn't keep." |
 
-Recording notes: 1920x1080, browser zoom 110%, dark theme. Terminal font 18 pt.
+For a narrated version you can add one more scene: partner "you", learn on, three clues, click your guesses, and
+watch "Partner memory" grow. Recording notes: 1920x1080, browser zoom 110%, dark theme, terminal font 18 pt.

@@ -38,6 +38,11 @@ SWAPS = {"glove": "w2v", "w2v": "glove", "persona-mirror": "persona-leaper", "pe
 CONDITIONS = ("cold", "warm", "swap", "plain", "handover")
 
 
+def benchmark_game_id(pid: str, condition: str, seed: int) -> str:
+    """A test game's id. It seeds Codebook's sampling, so the live view reuses it to replay a logged game."""
+    return f"{pid}-{condition}-{seed}"
+
+
 @dataclass(frozen=True)
 class Setup:
     """How the clue-giver plays one test game: which memory it reads and who proposes clues."""
@@ -113,7 +118,7 @@ def play_test_games(pid: str, condition: str, seeds: Sequence[int], ai: str = "c
         chooser = clue_chooser(setup.chooser, pid, with_suggestions=setup.suggestions)
     out = []
     for seed in seeds:
-        gid = f"{pid}-{condition}-{seed}"
+        gid = benchmark_game_id(pid, condition, seed)
         result, _ = play(lambda ev: Session(memory, setup.read_key, model, gid, seed, condition, ev,
                                             allowed=spec.knows, chooser=chooser, chooser_name=setup.chooser,
                                             by=setup.chooser or "codebook", plain=condition == "plain"),
