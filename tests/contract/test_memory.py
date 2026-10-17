@@ -119,3 +119,51 @@ def test_a_memory_exported_to_a_file_comes_back_identical(population, test_setti
         memory.import_partner(data, "importer")          # exists, no replace
     with pytest.raises(ValueError):
         memory.import_partner(data[:-10] + b"x" * 10, "other")  # corrupted payload
+
+
+def _session_on_board(population, seed, **kwargs):
+    memory = Memory(population)
+    words, key = board_for_seed(seed)
+    session = Session(memory, keys.POPULATION, memory.model(keys.POPULATION), f"s-{seed}", seed, "test", [], **kwargs)
+    session.observe(words, key)
+    return session
+
+
+def test_plain_ai_passes_the_turn_after_three_rejected_proposals(population):
+    calls = []
+
+    def chooser(board, options, rejected):
+        calls.append((tuple(options), tuple(rejected)))
+        return board.words[0], 2          # a board word: never legal
+
+    from codebook.session import AI_ATTEMPTS, PASS_CLUE
+    session = _session_on_board(population, 8100, chooser=chooser, chooser_name="fake", plain=True)
+    clue, count = session.give_clue()
+    assert (clue, count) == (PASS_CLUE, 1)
+    assert session._pending.record.by == "fake-pass"
+    assert len(calls) == AI_ATTEMPTS and calls[0][0] == () and len(calls[-1][1]) == AI_ATTEMPTS - 1
+
+
+def test_handover_falls_back_to_codebook_and_says_so(population):
+    session = _session_on_board(population, 8101, chooser=lambda b, o, r: None, chooser_name="fake")
+    session.give_clue()
+    assert session._pending.record.by == "codebook"
+
+
+def test_an_ai_clue_is_labelled_with_the_ai(population):
+    def chooser(board, options, rejected):
+        return (options[0].clue, 1) if options else None
+
+    session = _session_on_board(population, 8102, chooser=chooser, chooser_name="fake")
+    session.give_clue()
+    assert session._pending.record.by == "fake"
+
+
+def test_a_clue_is_repeated_rather_than_the_game_given_up(population, monkeypatch):
+    session = _session_on_board(population, 8103)
+    real = Session._options
+    monkeypatch.setattr(Session, "_options", lambda self, seed, exclude: (real(self, seed, exclude)[0], [])
+                        if exclude else real(self, seed, exclude))
+    session.turns.append(TurnRecord(1, "zzused", 1, (), (), {}, (), "codebook"))
+    clue, count = session.give_clue()
+    assert clue and count >= 1 and session._pending.record.by == "codebook"

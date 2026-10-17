@@ -14,13 +14,15 @@ from typing import Callable, Sequence
 
 import numpy as np
 
-from codebook.board import BoardView, is_legal_clue
+from codebook.board import WORD_RE, BoardView, is_legal_clue
 from codebook.memory import Memory, TurnRecord
 from codebook.model import PartnerModel
 from codebook.spymaster import Costs, Option, disagreement, evaluate, plan
 
 BLOCK_STRENGTH = 0.02
 BLOCK_P = 0.05
+AI_ATTEMPTS = 3       # an AI clue-giver gets this many proposals per turn, each rejection explained
+PASS_CLUE = "zzzz"    # plain AI with no usable clue: a legal word no partner knows, so the turn passes
 
 
 class TurnLimit(RuntimeError):
@@ -52,9 +54,9 @@ class Pending:
     since: int
 
 
-# An outside AI that proposes a clue. It sees the board and Codebook's ranked options and
-# returns (clue, count), or None to take Codebook's top option.
-Chooser = Callable[[BoardView, Sequence[Option]], "tuple[str, int] | None"]
+# An outside AI that proposes a clue. It sees the board, Codebook's ranked options (none for the
+# plain AI) and its own rejected proposals with the reasons, and returns (clue, count) or None.
+Chooser = Callable[[BoardView, Sequence[Option], Sequence[tuple[str, str]]], "tuple[str, int] | None"]
 
 
 @dataclass
@@ -104,27 +106,24 @@ class Session:
         if len(self.turns) >= self.max_turns:
             raise TurnLimit(f"{self.game_id}: {self.max_turns} clues without finishing")
         n = len(self.turns) + 1
-        used = {t.clue for t in self.turns}
-
-        def allowed(word: str) -> bool:  # never repeat a clue within a game
-            return word not in used and self.allowed(word)
-
-        table = self.memory.features(self.read_key, self.board, self.model, allowed=allowed)
         seed = zlib.crc32(f"{self.game_id}:{n}".encode())
-        options = plan(self.board, table.rows, self.model, seed=seed, allowed=allowed, costs=self.costs)
-        if self.learn and self.explore > 0:
-            bonus = {o.clue: self.explore * disagreement(self.board, table.rows[o.clue]) for o in options}
-            options = sorted(options, key=lambda o: (-(o.value + bonus[o.clue]), o.count, o.clue))
+        table, options = self._options(seed, exclude={t.clue for t in self.turns})
+        if not options:  # every unused clue is gone: repeating one beats giving up the game
+            self._emit("repeat_allowed", turn=n)
+            table, options = self._options(seed, exclude=set())
+        ai = self.chooser_name or "ai"
         candidates: list[tuple[Option, dict, str]] = []
-        proposal = self.chooser(self.board, [] if self.plain else options[:10]) if self.chooser else None
-        if proposal:
-            opt, strengths = self._evaluate_proposal(proposal, seed)
-            if opt is not None and self.plain:
-                return self._commit(n, opt, strengths, self.chooser_name or "ai", options, table.ms, forced=False)
-            if opt is not None:
-                candidates.append((opt, strengths, self.chooser_name or "ai"))
-        if self.chooser and not candidates:
-            self._emit("fallback", turn=n, proposal=list(proposal) if proposal else None)
+        if self.chooser:
+            proposed = self._ask_ai(n, seed, options)
+            if proposed is not None and self.plain:
+                return self._commit(n, proposed[0], proposed[1], ai, options, table.ms, forced=False)
+            if proposed is not None:
+                candidates.append((proposed[0], proposed[1], ai))
+            elif self.plain:  # no usable clue from the AI, and no graph to fall back on: the turn passes
+                return self._commit(n, Option(PASS_CLUE, 1, 0.0, 0.0, 0.0, 0.0, (), ()), {}, f"{ai}-pass",
+                                    [], table.ms, forced=True)
+            else:
+                self._emit("fallback", turn=n)
         candidates.extend((o, table.rows[o.clue], "codebook") for o in options)
         blocked: list[tuple[Block, Option, dict, str]] = []
         for opt, strengths, proposer in candidates:
@@ -140,11 +139,47 @@ class Session:
             _, opt, strengths, proposer = min(blocked, key=lambda b: (b[0].p_assassin, b[0].strength, -b[1].value))
             opt = replace(opt, count=1, targets=opt.targets[:1])
             return self._commit(n, opt, strengths, proposer, options, table.ms, forced=True)
-        raise NoClue(f"{self.game_id} turn {n}: no legal clue links to any team word")
+        return self._last_resort(n, table.ms)
+
+    def _options(self, seed: int, exclude: set[str]):
+        def allowed(word: str) -> bool:
+            return word not in exclude and self.allowed(word)
+
+        table = self.memory.features(self.read_key, self.board, self.model, allowed=allowed)
+        options = plan(self.board, table.rows, self.model, seed=seed, allowed=allowed, costs=self.costs)
+        if self.learn and self.explore > 0:
+            bonus = {o.clue: self.explore * disagreement(self.board, table.rows[o.clue]) for o in options}
+            options = sorted(options, key=lambda o: (-(o.value + bonus[o.clue]), o.count, o.clue))
+        return table, options
+
+    def _ask_ai(self, n: int, seed: int, options) -> tuple[Option, dict] | None:
+        """Up to AI_ATTEMPTS proposals; each rejected one goes back to the AI with the reason."""
+        rejected: list[tuple[str, str]] = []
+        for attempt in range(1, AI_ATTEMPTS + 1):
+            proposal = self.chooser(self.board, [] if self.plain else options[:10], tuple(rejected))
+            if not proposal:
+                rejected.append(("", "no usable answer"))
+                continue
+            opt, strengths, reason = self._evaluate_proposal(proposal, seed)
+            if opt is not None:
+                return opt, strengths
+            rejected.append((str(proposal[0]), reason))
+            self._emit("proposal_rejected", turn=n, clue=str(proposal[0]), reason=reason, attempt=attempt)
+        return None
+
+    def _last_resort(self, n: int, ms):
+        """No clue links to any team word in this memory: any legal word the partner knows, count 1."""
+        from codebook.harness import clue_wordlist  # noqa: PLC0415 - avoids an import cycle
+
+        for word in clue_wordlist():
+            if self.allowed(word) and is_legal_clue(word, self.board.all_words):
+                opt = Option(word, 1, 0.0, 0.0, 0.0, 0.0, self.board.team[:1], ())
+                return self._commit(n, opt, {}, "codebook-last-resort", [], ms, forced=True)
+        raise NoClue(f"{self.game_id} turn {n}: no legal clue at all")
 
     def _commit(self, n: int, opt: Option, strengths, proposer: str, options, ms, *, forced: bool):
         record = TurnRecord(n, opt.clue, opt.count, self.board.words, opt.targets,
-                            dict(strengths), (), proposer if proposer != "codebook" else self.by, opt.value)
+                            dict(strengths), (), proposer, opt.value)
         self._pending = Pending(record, len(self.events))
         self._emit("clue", turn=n, clue=opt.clue, count=opt.count, proposed_by=proposer, forced=forced,
                    option=opt.as_dict(), alternatives=[o.as_dict() for o in options[:5]],
@@ -161,19 +196,26 @@ class Session:
 
     # ---- internals ----
     def _evaluate_proposal(self, proposal: tuple[str, int], seed: int):
-        clue, count = proposal[0].strip().lower(), int(proposal[1])
-        if not is_legal_clue(clue, self.board.all_words) or not self.allowed(clue):
-            self._emit("proposal_rejected", clue=clue, reason="illegal clue or unknown to this partner")
-            return None, {}
+        clue = str(proposal[0]).strip().lower()
+        try:
+            count = int(proposal[1])
+        except (TypeError, ValueError):
+            return None, {}, "the count is not a number"
+        if not WORD_RE.fullmatch(clue):
+            return None, {}, "not one word of lowercase letters"
+        if not is_legal_clue(clue, self.board.all_words):
+            return None, {}, "a word on the board, part of one, or the same stem"
+        if not self.allowed(clue):
+            return None, {}, "your partner does not know this word"
         strengths = self.memory.clue_strengths(self.read_key, clue, self.board.words)
         rng = np.random.default_rng(seed)
         gumbel = rng.gumbel(size=(self.costs.samples, len(self.board.words)))
         costs = replace(self.costs, max_count=9) if self.plain else self.costs
         options = evaluate(self.board, clue, strengths, self.model, gumbel, costs)
         if not options:
-            return None, {}
+            return None, {}, "no team words left"
         count = max(1, min(count, len(options)))
-        return replace(options[count - 1]), strengths
+        return replace(options[count - 1]), strengths, ""
 
     def _block(self, n: int, opt: Option, proposer: str) -> Block | None:
         bomb = self.board.assassin

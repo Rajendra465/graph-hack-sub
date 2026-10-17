@@ -10,6 +10,25 @@ ConceptNet fallback used seeds 5000-5059 to tune the clue-giver (default sharpne
 feature, no repeated clues). Tuning on those boards would leak into the final numbers, so the final test
 boards move to 6000-6199 and pilots use 8000+. Nothing else changes.
 
+## Amendment 2, 2026-10-17 19:41 IST (a harness bug found by code review; the run is repeated)
+
+The first final run (`final-20261017-1806`) was stopped after its bot stage when a code review found two
+defects in our harness, not in the engine:
+
+1. **A forfeit rule nobody wrote down.** Codebook never repeats a clue within a game. With one team word left
+   and every clue linked to it already used, the session gave up and the game was scored as a 25-turn loss,
+   though the engine would have played on. It happened in 60 of 2,400 games, more often with partner memories
+   than with everyone's (they give more one-word clues). Now a clue may be repeated when no unused one is left,
+   and a legal word goes out at count 1 if no clue links to the last word at all; no game ends early.
+2. **The AI set-ups could silently borrow Codebook's clue.** A rejected AI proposal (a board word, or a word
+   outside the bot's reduced vocabulary table) fell back to Codebook's top clue and was recorded as the AI's.
+   Now an AI gets three proposals per turn, each rejection explained to it; the plain AI's turn passes if none
+   is usable; every clue records who really gave it; and the bots' vocabulary tables include their 50,000 /
+   300,000 most frequent words, as the full vectors do (similarities between words are unchanged).
+
+The whole pre-registered benchmark is run again from scratch with the fix (boards, partners, set-ups, promises
+and stop rule unchanged). The first run's game log stays in `results/runs/final-20261017-1806/` for comparison.
+
 ## Who keeps score
 
 The unmodified Codenames AI Competition engine (MIT, `src/codebook/engine/`, checksums in

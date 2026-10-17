@@ -13,6 +13,7 @@ from typing import Iterable, Iterator, Mapping
 
 import numpy as np
 
+from codebook.board import WORD_RE
 from codebook.harness import engine
 from codebook.partners import PartnerSpec
 
@@ -21,6 +22,9 @@ SOURCES = {
     "glove": ("glove-wiki-gigaword-300", False, "GloVe 6B 300d (competition GloVe guesser)"),
     "w2v": ("word2vec-google-news-300", True, "word2vec Google News 300d (competition w2v guesser)"),
 }
+# Besides the clue list and the board pool, keep each model's most frequent single words, so a clue an
+# AI clue-giver might say ("volcano") is known to the bot, as it is with the full vectors.
+FREQUENT = {"glove": 50_000, "w2v": 300_000}
 
 
 class VectorTable(Mapping[str, np.ndarray]):
@@ -72,7 +76,8 @@ def build_cache(name: str, settings, vocab: Iterable[str], log=print) -> Path:
     _, binary, _ = SOURCES[name]
     log(f"reading {src.name} (one-time, a few minutes)")
     kv = KeyedVectors.load_word2vec_format(str(src), binary=binary, unicode_errors="ignore")
-    words = sorted({w for w in vocab if w in kv.key_to_index})
+    frequent = {w for w in kv.index_to_key[:FREQUENT[name]] if WORD_RE.fullmatch(w)}
+    words = sorted({w for w in vocab if w in kv.key_to_index} | frequent)
     vecs = np.stack([kv[w] for w in words]).astype(np.float32)
     out = cache_path(settings, name)
     np.savez_compressed(out, words=np.array(words), vecs=vecs)

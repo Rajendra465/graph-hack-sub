@@ -12,6 +12,7 @@ from __future__ import annotations
 import contextlib
 import io
 import os
+from collections import Counter
 import sys
 import threading
 import time
@@ -102,6 +103,7 @@ class GameResult:
             "game": self.game_id, "seed": self.seed, "turns": self.turns, "won": self.won,
             "assassin": self.assassin, "team_found": self.team_found, "opponent_found": self.opponent_found,
             "clue_count": len(self.clues), "clean_clues": self.clean_clues, "seconds": round(self.seconds, 2),
+            "clues_by": dict(sorted(Counter(c.by for c in self.clues).items())),
             "clues": [{"n": c.n, "clue": c.clue, "count": c.count, "intended": list(c.intended),
                        "guesses": [list(g) for g in c.guesses], "by": c.by, "value": round(c.value, 3)}
                       for c in self.clues],

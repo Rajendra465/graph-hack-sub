@@ -178,10 +178,7 @@ def paired_diff(a: Sequence[dict], b: Sequence[dict], *, resamples: int = 10_000
 
 
 def summarize(rows: Sequence[dict]) -> dict:
-    groups: dict[tuple[str, str], list[dict]] = {}
-    for r in rows:
-        if r["condition"] != "train":
-            groups.setdefault((r["partner"], r["condition"]), []).append(r)
+    groups = _group(rows)
     table = {f"{p}/{c}": metrics(g) for (p, c), g in sorted(groups.items())}
     comparisons = {}
     for pid in sorted({p for p, _ in groups}):
@@ -202,11 +199,24 @@ LABELS = {"plain": "Plain AI (no graph)", "cold": "Everyone's memory", "warm": "
 BOTS = ("glove", "w2v")
 
 
+def dedupe(rows: Sequence[dict]) -> list[dict]:
+    """One row per (partner, condition, clue-giver, board): the latest wins if a stage was re-run."""
+    last: dict[tuple, dict] = {}
+    for r in rows:
+        last[(r["partner"], r["condition"], r.get("clue_giver", "codebook"), r["seed"])] = r
+    return list(last.values())
+
+
 def _group(rows: Sequence[dict]) -> dict[tuple[str, str], list[dict]]:
     groups: dict[tuple[str, str], list[dict]] = {}
-    for r in rows:
+    givers: dict[tuple[str, str], set] = {}
+    for r in dedupe(rows):
         if r["condition"] != "train":
             groups.setdefault((r["partner"], r["condition"]), []).append(r)
+            givers.setdefault((r["partner"], r["condition"]), set()).add(r.get("clue_giver", "codebook"))
+    mixed = {k: v for k, v in givers.items() if len(v) > 1}
+    if mixed:
+        raise ValueError(f"one set-up played by several clue-givers, report them separately: {mixed}")
     return groups
 
 
@@ -259,6 +269,16 @@ def report(rows: Sequence[dict], *, title: str, source: str) -> str:
                     verdict = "better" if d["a_better"] else ("worse" if d["ci95"][0] > 0 else "no clear difference")
                     lines.append(f"\n{LABELS[a]} vs {LABELS[b].lower()}: {d['mean']:+.2f} turns "
                                  f"[{d['ci95'][0]:+.2f}, {d['ci95'][1]:+.2f}] over {d['n']} boards: {verdict}.")
+        ai_rows = [r for c in ("plain", "handover") for r in g.get((pid, c), [])]
+        if ai_rows:
+            by: dict[str, int] = {}
+            for r in ai_rows:
+                for who, k in r.get("clues_by", {}).items():
+                    by[who] = by.get(who, 0) + k
+            lines.append(f"\nWho gave the clues in the AI set-ups ({ai_rows[0].get('clue_giver')}): "
+                         + ", ".join(f"{who} {k}" for who, k in sorted(by.items()))
+                         + ". In the plain set-up a turn with no usable AI clue passes; in the handover set-up it "
+                           "falls back to Codebook's top suggestion.")
         lines.append("")
     ps = promises(rows)
     lines += ["## Promises (from EVAL.md)", ""]

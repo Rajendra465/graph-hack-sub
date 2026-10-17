@@ -226,7 +226,6 @@ def run_eval(partners: str = typer.Option("glove,w2v,persona-mirror,persona-leap
     rows = E.run_tests([(p, c) for p in pids for c in conds], seeds, workers=workers, sink=sink, ai=ai,
                        log=typer.echo)
     summary = E.summarize(rows)
-    (run_dir / "summary.json").write_text(json.dumps(summary, indent=1))
     typer.echo(json.dumps(summary, indent=1))
 
 

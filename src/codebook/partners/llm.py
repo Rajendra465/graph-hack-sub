@@ -148,7 +148,7 @@ def partner(pid: str) -> PartnerSpec:
 def clue_chooser(agent: str, partner_id: str, *, with_suggestions: bool) -> Callable:
     """An AI clue-giver. With suggestions it sees Codebook's top options from the partner's memory."""
 
-    def choose(board, options):
+    def choose(board, options, rejected=()):
         def group(role):
             return ", ".join(w.upper() for w in board.with_role(role)) or "none"
         sugg = ""
@@ -156,6 +156,9 @@ def clue_chooser(agent: str, partner_id: str, *, with_suggestions: bool) -> Call
             lines = [f"- {o.clue.upper()} {o.count}: aims at {', '.join(t.upper() for t in o.targets)}; "
                      f"expected {o.expected_hits:.1f} right; bomb risk {o.p_assassin:.0%}" for o in options[:8]]
             sugg = ("Suggestions from this partner's memory (Codebook), best first:\n" + "\n".join(lines) + "\n")
+        if rejected:
+            sugg += ("These clues were not allowed, choose a different one:\n"
+                     + "\n".join(f"- {c.upper() or '(no answer)'}: {why}" for c, why in rejected) + "\n")
         prompt = CLUE_PROMPT.format(partner=partner_id, team=group("team"), opponent=group("opponent"),
                                     neutral=group("neutral"), assassin=group("assassin"), suggestions=sugg)
         try:
