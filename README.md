@@ -211,8 +211,9 @@ the first run: a hidden forfeit rule and AI set-ups that could borrow Codebook's
 
 ## AI use
 
-Built with Claude Code (Claude Opus) and Codex as coding assistants: research, code, tests and the pitch
-deck. Claude Haiku and Codex also appear inside the product as partners and clue-givers, through their
+Built with Claude Code (Claude Opus) as the coding assistant: research, code, tests, documentation, the
+pitch deck and the demo recording script. Inside the product, Claude Haiku (guesser) and Claude Sonnet
+(clue-giver) play through Claude Code's headless mode, and a Codex CLI adapter is included, through their
 command-line tools.
 
 ## Limits, stated plainly

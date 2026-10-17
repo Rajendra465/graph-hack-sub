@@ -49,9 +49,9 @@ for export and import.
 engine (MIT, vendored unmodified); GloVe and word2vec vectors for the competition's bot partners; Claude Code
 headless (`claude -p`) and Codex CLI as AI partners and clue-givers.
 
-**AI use (required disclosure):** Built with Claude Code (Claude Opus) as the main coding assistant for research,
-code, tests, documentation, the pitch deck and the demo recording script; Codex CLI was set up as a second
-assistant and as an in-product partner. Inside the product, Claude Haiku plays as a guesser and Claude Sonnet as a
+**AI use (required disclosure):** Built with Claude Code (Claude Opus) as the coding assistant for research,
+code, tests, documentation, the pitch deck and the demo recording script. A Codex CLI adapter is included as an
+in-product partner and clue-giver; Codex did not write code for this project. Inside the product, Claude Haiku plays as a guesser and Claude Sonnet as a
 clue-giver through their command-line tools; they never get database access.
 
 **Data:** everyone's memory is built at setup from the Small World of Words data (SWOW-EN18, downloaded by each

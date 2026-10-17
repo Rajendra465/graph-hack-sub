@@ -94,5 +94,5 @@ Each partner's memory is its own graph, and FalkorDB treats a graph like a file:
 lock it to one user, carry it to another server, and traverse it in milliseconds. Remove FalkorDB and nothing
 runs; there is no fallback store, by design.
 
-*Built with Claude Code and Codex as coding assistants; Claude Haiku and Sonnet also appear inside the
+*Built with Claude Code as the coding assistant; Claude Haiku and Sonnet also appear inside the
 product as partners and clue-givers.*
