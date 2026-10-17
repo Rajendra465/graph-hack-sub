@@ -282,7 +282,8 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
             return ok({"error": "no such game"}, 404)
         since = int(request.query_params.get("since", 0))
         return ok({"status": game.status, "error": game.error, "events": game.since(since),
-                   "result": game.result})
+                   "result": game.result, "partner": game.partner, "seed": game.seed, "read_key": game.read_key,
+                   "words": [w.lower() for w in game.words], "key": game.key})
 
     async def guess(request: Request):
         game = live.games.get(request.path_params["gid"])

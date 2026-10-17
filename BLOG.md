@@ -60,7 +60,7 @@ What the memories learned:
 | partner | direct | reverse | chain | shared |
 |---|---|---|---|---|
 | everyone's (default) | 3.0 | 1.5 | 1.5 | 1.5 |
-| GloVe bot (competition) | 0.79 | 0.89 | 1.26 | **2.49** |
+| GloVe bot (competition) | 0.74 | 0.94 | 1.53 | **2.19** |
 | word2vec bot (competition) | 0.83 | 0.96 | 0.90 | **1.95** |
 | planted backwards thinker | 2.57 | **4.03** | 1.42 | 1.44 |
 | planted two-step jumper | 3.15 | 1.70 | **2.81** | **2.85** |
@@ -70,21 +70,9 @@ appear in the same contexts. Nobody told Codebook that.
 
 ## Results
 
-The evaluation was written down and committed before the first test run ([EVAL.md](EVAL.md)), including a
-stop rule: if a partner's own memory didn't beat everyone's memory for either competition bot, we'd say the
-idea failed. On 200 boards each partner never saw (everyone's memory here is ConceptNet 5.7):
-
-| Partner | Everyone's memory | Your memory | Wrong memory |
-|---|---|---|---|
-| word2vec bot | 15.6 turns, 33% bomb | **14.5 turns, 21% bomb** | 15.0 |
-| GloVe bot | 16.0, 33% bomb | 15.7, 28% bomb | 15.5 |
-| planted backwards thinker | 6.6 | **5.6** | 6.9 |
-| planted two-step jumper | 6.8 | **6.5** | 7.3 |
-
-Your memory beat everyone's for three of four partners (paired by board, 95% intervals below zero); for GloVe
-it didn't. The wrong partner's memory lost clearly for the planted partners, who think differently, but not
-between the two bots, who think alike: each bot's memory works almost as well for the other. That's a promise
-we made and didn't keep, and the README says so.
+_Being filled in from the re-run (`final-20261017-1941-v2`). A code review of our own harness found two bugs
+in the first run (a hidden forfeit rule, and AI set-ups that could borrow Codebook's clue), so the whole
+pre-registered benchmark runs again; both are written up in [EVAL.md](EVAL.md)._
 
 ## Five things we learned about FalkorDB 6.0.2
 

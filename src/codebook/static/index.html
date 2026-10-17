@@ -276,7 +276,32 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
 $('start').onclick = start;
 $('endturn').onclick = () => guess(null);
 $('cmpgo').onclick = compare;
-loadPartners().then(allQueries).catch(e => { $('gameinfo').textContent = 'Server error: ' + e.message; });
+
+function showTab(name) {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === name));
+  ['queries', 'memory', 'compare', 'all'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== name));
+}
+
+// Links into a view: ?game=<id> replays a game's events, ?tab=memory&mem=w2v, ?tab=compare&seed=6042&memories=a,b
+async function fromUrl() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('seed')) $('seed').value = q.get('seed');
+  if (q.get('memories')) $('cmpmems').value = q.get('memories');
+  if (q.get('game')) {
+    game = q.get('game'); since = 0;
+    const j = await api(`/api/game/${encodeURIComponent(game)}?since=0`);
+    $('partner').value = j.partner; $('seed').value = j.seed; renderBoard(j.words, j.key);
+    $('gameinfo').innerHTML = `Board ${num(j.seed)} · partner <b>${esc(j.partner)}</b> · memory <b>${esc(j.read_key)}</b>`;
+    for (const ev of j.events) { since = ev.i + 1; handle(ev); }
+    if (j.status !== 'running') { $('status').textContent = j.status === 'won' ? `Won in ${num(j.result.turns)} turns` : j.status; $('status').className = 'status ' + j.status; }
+    else timer = setInterval(poll, 400);
+  }
+  if (q.get('mem')) await showMemory(q.get('mem'));
+  if (q.get('tab') === 'compare') await compare();
+  if (q.get('tab')) showTab(q.get('tab'));
+}
+
+loadPartners().then(allQueries).then(fromUrl).catch(e => { $('gameinfo').textContent = 'Server error: ' + e.message; });
 </script>
 </body>
 </html>
