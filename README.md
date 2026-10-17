@@ -39,8 +39,9 @@ command exits with an error that names FalkorDB.
 
 Every turn:
 
-1. **Suggest**: Cypher finds every clue word linked to the unrevealed words (direct links, reverse links,
-   and the strongest two-step chain) in the memory being used.
+1. **Suggest**: Cypher reads four kinds of link between each candidate clue and every unrevealed word,
+   in the memory being used: **direct** (clue → word), **reverse** (word → clue), **chain** (clue → m → word)
+   and **shared associates** (clue → m ← word: both make people think of m).
 2. **Score**: a small partner model turns those links into a "pull" towards each board word
    (`style · log(1 + 100·strength) + bias[word]`). Codebook simulates the partner's picks and ranks clues by
    expected team words found minus the cost of hitting the bomb or the opponent.
@@ -49,7 +50,15 @@ Every turn:
    Codex proposes the clue.
 4. **Learn** (partner memories only): every pick reweights the clue→word link in that partner's graph
    (creating it if everyone's memory lacks it); intended words the partner passed over are weakened. After each
-   game the diary is consolidated into the partner's style (direct / reverse / chain weights) and favourite words.
+   game the diary is consolidated into the partner's style (how much they rely on each kind of link) and
+   favourite words.
+
+**Practice games probe.** A careful clue-giver only gives clues where people's direct links are strong, and
+in exactly those situations a "reverse thinker" and a "direct thinker" pick the same word, so a diary of
+ordinary games can't tell them apart. During practice games Codebook adds a bonus for clues on which
+one-habit hypotheses (only direct, only reverse, only chains, only shared associates) predict different picks.
+With it, a planted partner that thinks in reverse links is recognised as one (learned reverse weight 4.0 vs a
+default of 1.5); without it, the learner never sees the difference.
 
 ## Data model
 
@@ -106,11 +115,24 @@ SET r.hits = coalesce(r.hits, 0) + 1
 SET r.pp = (r.p + $gain * r.hits) * pow($decay, coalesce(r.misses, 0))
 ```
 
-**A FalkorDB 6.0.2 finding.** Written the obvious way (`UNWIND $board AS bw MATCH (c)-[r]->(:Word {text: bw})`),
-the planner scans every link for each board word instead of using the `Word.text` index. Binding the indexed
-node first and passing it through `WITH` gives a `Node By Index Scan` and a traversal from it: on a 497k-link
-graph, direct links went from 3.1 s to 13 ms and two-step chains from 17.6 s to 117 ms, with identical rows
-(checked by `GRAPH.EXPLAIN` and a row-by-row comparison).
+### What we learned about FalkorDB 6.0.2 while building this
+
+1. **Index-first under `UNWIND`.** Written the obvious way (`UNWIND $board AS bw MATCH (c)-[r]->(:Word {text: bw})`),
+   the planner scans every link for each board word instead of using the `Word.text` index. Binding the indexed
+   node first and passing it through `WITH` gives a `Node By Index Scan` and a traversal from it: on a 497k-link
+   graph, direct links went from 3.1 s to 13 ms and two-step chains from 17.6 s to 117 ms, with identical rows
+   (checked with `GRAPH.EXPLAIN` and a row-by-row comparison).
+2. **`OPTIONAL MATCH` after an aggregating `WITH`.** `MATCH (c) OPTIONAL MATCH (c)-[f]->(a) WITH c, collect(..)
+   OPTIONAL MATCH (c)<-[b]-(t) RETURN ..` returned no rows from the second match, silently. It was the one-clue
+   reader, so a planted test partner never saw a reverse link. We rewrote it as `UNION ALL` of two plain
+   patterns, and a contract test now checks it against the whole-board reader (1,000 of 1,000 agree).
+3. **ACL and read-only graph queries.** `GRAPH.RO_QUERY` is declared as read-write key access, so Redis's
+   read-only key pattern (`%R~`) can't grant "read everyone's memory". A selector, `(~key +graph.ro_query)`, can.
+4. **Graphs travel with `DUMP`/`RESTORE`** (Redis `COPY` refuses module keys): an 11 MB dump of a 497k-link
+   graph restores in 0.4 s with its indexes. `codebook export`/`import` use this to carry a memory between servers.
+5. **Keep same-named graphs apart across Redis databases.** Re-creating a graph in one database while a write
+   ran on a same-named graph in another aborted the write ("graph was deleted or replaced"). Tests now use
+   their own key prefix (`cbtest:`).
 
 ## Locks: one database user per partner
 

@@ -12,11 +12,23 @@ from codebook import config, keys
 from codebook import cypher as C
 from codebook.db import Db, DbError
 from codebook.memory import Memory
+from codebook.memory import now as memory_now
 
 app = typer.Typer(help="Codebook: an AI clue-giver that remembers each partner, in FalkorDB.",
                   no_args_is_help=True, add_completion=False)
 
 COLOUR = {"team": "TEAM", "opponent": "opponent", "neutral": "neutral", "assassin": "BOMB"}
+
+
+def _git_commit() -> str:
+    import subprocess  # noqa: PLC0415
+
+    try:
+        out = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True, timeout=10)
+        dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, timeout=10).stdout
+        return out.stdout.strip() + ("-dirty" if dirty.strip() else "")
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
 
 
 def _memory() -> tuple[config.Settings, Memory]:
@@ -191,7 +203,7 @@ def run_eval(partners: str = typer.Option("glove,w2v,persona-mirror,persona-leap
     plan = {"run": run_id, "partners": pids, "conditions": conds, "train": train_games, "test": test_games,
             "train_seeds": [E.TRAIN_SEED0, E.TRAIN_SEED0 + train_games - 1],
             "test_seeds": [E.TEST_SEED0, E.TEST_SEED0 + test_games - 1], "ai": ai, "snapshots": snaps,
-            "skip_train": skip_train, "argv": sys.argv[1:]}
+            "skip_train": skip_train, "argv": sys.argv[1:], "commit": _git_commit(), "started": memory_now()}
     with (run_dir / "plan.jsonl").open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(plan) + "\n")
     typer.echo(f"run {run_id}: {plan}")
