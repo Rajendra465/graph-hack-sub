@@ -10,6 +10,8 @@ anything that speaks MCP) through tools, never through database credentials.
 
 Graph Hacks 2026, **Track 02: Agent Memory and Coordination**.
 
+**▶ Watch the demo (3:39): https://youtu.be/eg9yptg7180**
+
 **Try it live: https://codebook-755276882523.asia-south1.run.app** (the live view on Google Cloud Run, with
 FalkorDB in the same container; see [Deployment](#deployment)).
 

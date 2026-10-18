@@ -42,7 +42,7 @@ https://github.com/Rajendra465/graph-hack-sub
 **Demo video** (required): YouTube, public or unlisted
 
 ```text
-[video URL]
+https://youtu.be/eg9yptg7180
 ```
 
 **Live demo or deployment** (optional): the live view on Google Cloud Run, with FalkorDB in the same container.
