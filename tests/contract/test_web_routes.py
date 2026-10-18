@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import dataclasses
 import re
 
 import pytest
 from starlette.testclient import TestClient
 
-from codebook.web import create_app
+from codebook.web import MAX_SEED, create_app
 
 pytestmark = pytest.mark.contract
 
@@ -35,6 +36,49 @@ def test_board_graph_route_refuses_bad_requests(client, params):
 def test_game_graph_route_answers_404_and_400(client):
     assert client.get("/api/game/no-such-game/graph").status_code == 404
     assert client.get("/api/game/no-such-game/graph", params={"turn": "0"}).status_code == 400
+
+
+PUBLIC_HOST = "demo-space.hf.space"
+
+
+@pytest.fixture(scope="module")
+def public_client(population, test_settings) -> TestClient:
+    settings = dataclasses.replace(test_settings, public_host=PUBLIC_HOST)
+    return TestClient(create_app(settings), base_url=f"https://{PUBLIC_HOST}")
+
+
+def test_a_local_app_refuses_other_hosts(client):
+    assert client.get("/api/cypher", headers={"host": "evil.example"}).status_code == 400
+
+
+def test_the_public_demo_answers_on_its_own_host(public_client):
+    assert public_client.get("/api/cypher").status_code == 200
+
+
+def test_the_public_demo_takes_writes_only_from_its_own_page(public_client):
+    body = {"partner": "glove", "learn": True, "seed": 5000}
+    other = public_client.post("/api/game", json=body, headers={"origin": "https://evil.example"})
+    assert other.status_code == 403
+    own = public_client.post("/api/game", json=body, headers={"origin": f"https://{PUBLIC_HOST}"})
+    assert own.status_code == 400 and "public demo" in own.json()["error"]  # past the origin check
+
+
+@pytest.mark.parametrize("body", [
+    {"partner": "glove", "learn": True},                   # would change a benchmark memory
+    {"partner": "claude"},                                 # an AI guesser calls a model every turn
+    {"partner": "glove", "clue_giver": "claude-sonnet"},   # a live AI clue-giver calls a model
+])
+def test_the_public_demo_refuses_bot_learning_and_live_ai(public_client, body):
+    r = public_client.post("/api/game", json={"seed": 5000, **body})
+    assert r.status_code == 400
+    assert "public demo" in r.json()["error"]
+
+
+def test_the_public_demo_still_replays_an_ai_from_the_log(public_client):
+    body = {"seed": MAX_SEED - 1, "partner": "glove", "clue_giver": "claude-sonnet", "replay": True}
+    r = public_client.post("/api/game", json=body)
+    assert r.status_code == 400
+    assert "public demo" not in r.json()["error"]  # refused only because this board has no logged game
 
 
 def test_the_page_and_every_file_it_loads_are_served(client):

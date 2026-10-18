@@ -33,7 +33,7 @@ from codebook.graphview import GraphRequest, clue_graph, parse_graph_request, pa
 from codebook.harness import board_for_seed, engine, play
 from codebook.memory import Memory
 from codebook.partners import ALL as PARTNER_IDS
-from codebook.partners import make_partner
+from codebook.partners import LLMS, make_partner
 from codebook.replay import live_condition, logged_chooser, logged_game, same_moves
 from codebook.session import Session, TurnLimit
 from codebook.spymaster import plan
@@ -134,6 +134,7 @@ class LiveApp:
             if not self.db.exists(read_key):
                 raise ValueError(f"no memory for {memory_of!r}")
         replay = body.get("replay") is True
+        self._public_guard(partner, clue_giver, learn=learn, replay=replay)
         condition = live_condition(partner, memory_of, clue_giver, learn=learn, replay=replay)
         if replay and condition != "handover":
             raise ValueError("a replay takes an AI clue-giver's clues from the benchmark log: choose an AI "
@@ -158,6 +159,17 @@ class LiveApp:
             self.running.release()
             raise
         return game
+
+    def _public_guard(self, partner: str, clue_giver: str, *, learn: bool, replay: bool) -> None:
+        """A public deployment has no AI keys, and its benchmark memories must stay as they were logged."""
+        if not self.settings.public_host:
+            return
+        if learn and partner != HUMAN:
+            raise ValueError("on the public demo only your own memory learns: play as the guesser, "
+                             "or run Codebook locally to train a bot")
+        if partner in LLMS or (clue_giver != "codebook" and not replay):
+            raise ValueError("the public demo has no AI keys: tick \"Replay log\" to replay an AI clue-giver's "
+                             "logged clues, or run Codebook locally")
 
     def _logged(self, partner: str, condition: str | None, seed: int, clue_giver: str, *,
                 required: bool) -> dict | None:
@@ -421,9 +433,12 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
         Route("/api/graph", board_graph),
         Mount("/static", app=StaticFiles(directory=STATIC), name="static"),
     ]
-    host, port = live.settings.ui_host, live.settings.ui_port
-    allowed_hosts = sorted({"127.0.0.1", "localhost", host})
-    origins = {f"http://{h}:{port}" for h in allowed_hosts}
+    host, port, public = live.settings.ui_host, live.settings.ui_port, live.settings.public_host
+    local_hosts = sorted({"127.0.0.1", "localhost", host})
+    origins = {f"http://{h}:{port}" for h in local_hosts}
+    if public:  # anyone can reach a public deployment, so the host check (a local guard) gives way
+        origins.add(f"https://{public}")
+    allowed_hosts = ["*"] if public else local_hosts
 
     class SameOriginJson(BaseHTTPMiddleware):
         """Refuse cross-site writes: a POST must be JSON and come from this page."""

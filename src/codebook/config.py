@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
+
+_HOST = re.compile(r"[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*(:\d{1,5})?")
 
 
 class ConfigError(ValueError):
@@ -22,6 +25,7 @@ class Settings:
     home: Path = Path(".")
     ui_host: str = "127.0.0.1"
     ui_port: int = 7811
+    public_host: str = ""  # a public deployment's host name; empty for a local run (see web.LiveApp)
 
     @property
     def data_dir(self) -> Path:
@@ -45,6 +49,13 @@ def _int(env: Mapping[str, str], name: str, default: int, lo: int = 1, hi: int =
     return value
 
 
+def _host(env: Mapping[str, str], name: str) -> str:
+    raw = env.get(name, "").strip().lower()
+    if raw and not _HOST.fullmatch(raw):
+        raise ConfigError(f"{name} must be a host name such as demo.hf.space, got {raw!r}")
+    return raw
+
+
 def load(env: Mapping[str, str] | None = None) -> Settings:
     env = os.environ if env is None else env
     return Settings(
@@ -56,4 +67,5 @@ def load(env: Mapping[str, str] | None = None) -> Settings:
         home=Path(env.get("CODEBOOK_HOME", ".")).resolve(),
         ui_host=env.get("CODEBOOK_UI_HOST", "127.0.0.1"),
         ui_port=_int(env, "CODEBOOK_UI_PORT", 7811),
+        public_host=_host(env, "CODEBOOK_PUBLIC_HOST"),
     )
