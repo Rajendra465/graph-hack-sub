@@ -5,8 +5,11 @@ FROM falkordb/falkordb:6.0.2
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.15 /uv /uvx /bin/
 
-# Hugging Face runs the container as user 1000.
-RUN useradd --create-home --uid 1000 user
+# Hugging Face runs the container as user 1000. This image has no useradd, so add the account directly.
+RUN echo "user:x:1000:1000::/home/user:/bin/bash" >> /etc/passwd \
+ && echo "user:x:1000:" >> /etc/group \
+ && mkdir -p /home/user \
+ && chown 1000:1000 /home/user
 ENV HOME=/home/user \
     UV_PYTHON_INSTALL_DIR=/opt/uv-python \
     UV_PYTHON_PREFERENCE=only-managed \
