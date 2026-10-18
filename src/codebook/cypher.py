@@ -110,6 +110,17 @@ WHERE t.text IN $board
 RETURN t.text AS word, coalesce(b.pp, b.p) AS s, 1 AS kind
 """
 
+# The live view's 3D graph: two-step chains from one clue to the board, with the word in between.
+# Index-first: bind the clue by its indexed text before expanding (the 6.0.2 planner note above DIRECT).
+CLUE_CHAINS = """
+MATCH (c:Word) WHERE c.text = $clue
+WITH c
+MATCH (c)-[r1:ASSOC]->(m:Word)-[r2:ASSOC]->(t:Word)
+WHERE t.text IN $board AND m <> c AND t <> c AND m <> t
+RETURN m.text AS via, t.text AS word, coalesce(r1.pp, r1.p) * coalesce(r2.pp, r2.p) AS s
+ORDER BY s DESC LIMIT $limit
+"""
+
 # Block: the strongest chain of at most two links from the clue to the bomb, in this memory.
 PATH_TO = """
 MATCH p=(c:Word {text: $clue})-[:ASSOC*1..2]->(a:Word {text: $target})
@@ -236,6 +247,7 @@ ALL = {
     "chain": CHAIN,
     "shared": SHARED,
     "clue_links": CLUE_LINKS,
+    "clue_chains": CLUE_CHAINS,
     "path_to": PATH_TO,
     "learn_hits": LEARN_HITS,
     "learn_misses": LEARN_MISSES,
