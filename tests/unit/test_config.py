@@ -16,6 +16,16 @@ def test_the_public_host_is_read_and_lowercased():
     assert settings.public_host == "sarpal465-codebook.hf.space"
 
 
+def test_the_game_cap_and_the_human_wait_have_local_defaults():
+    settings = config.load({})
+    assert (settings.max_games, settings.human_wait_s) == (4, 300)
+
+
+def test_the_game_cap_and_the_human_wait_can_be_set():
+    settings = config.load({"CODEBOOK_MAX_GAMES": "16", "CODEBOOK_HUMAN_WAIT_S": "120"})
+    assert (settings.max_games, settings.human_wait_s) == (16, 120)
+
+
 @pytest.mark.parametrize("raw", ["https://demo.hf.space", "demo.hf.space/path", "bad host"])
 def test_a_public_host_that_is_not_a_host_name_is_refused(raw):
     with pytest.raises(config.ConfigError):

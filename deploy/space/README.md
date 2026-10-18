@@ -22,8 +22,9 @@ Code, setup and results: [repo URL]
 
 - FalkorDB 6.0.2 runs inside this container, reachable only from inside it, with a password made at startup. It
   loads a snapshot of the memories behind the published results.
-- Only your own memory ("you") learns here, so the benchmark memories stay as they were logged and every replay
-  still matches its log. A restart resets everything to the snapshot.
+- Only the "you" memory learns here, and everyone who plays as the guesser on this demo shares it. The benchmark
+  memories stay as they were logged, so every replay still matches its log. A restart resets everything to the
+  snapshot.
 - There are no AI keys here. The "another AI takes over" scenario replays Claude Sonnet's logged clues; live AI
   partners need a local install (see the repository).
 

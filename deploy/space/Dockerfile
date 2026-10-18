@@ -27,7 +27,9 @@ ENV CODEBOOK_HOME=/home/user/app \
     CODEBOOK_UI_HOST=0.0.0.0 \
     CODEBOOK_UI_PORT=7860 \
     CODEBOOK_DB_PORT=6390 \
-    CODEBOOK_PUBLIC_HOST=sarpal465-codebook.hf.space
+    CODEBOOK_PUBLIC_HOST=sarpal465-codebook.hf.space \
+    CODEBOOK_MAX_GAMES=16 \
+    CODEBOOK_HUMAN_WAIT_S=120
 EXPOSE 7860
 ENTRYPOINT []
 CMD ["bash", "/home/user/start.sh"]

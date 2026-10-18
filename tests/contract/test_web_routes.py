@@ -8,7 +8,7 @@ import re
 import pytest
 from starlette.testclient import TestClient
 
-from codebook.web import MAX_SEED, create_app
+from codebook.web import MAX_QUERY_EVENTS, MAX_SEED, LiveGame, create_app
 
 pytestmark = pytest.mark.contract
 
@@ -79,6 +79,36 @@ def test_the_public_demo_still_replays_an_ai_from_the_log(public_client):
     r = public_client.post("/api/game", json=body)
     assert r.status_code == 400
     assert "public demo" not in r.json()["error"]  # refused only because this board has no logged game
+
+
+def test_the_game_cap_comes_from_the_settings(population, test_settings):
+    capped = TestClient(create_app(dataclasses.replace(test_settings, max_games=0)), base_url="http://127.0.0.1")
+    r = capped.post("/api/game", json={"partner": "w2v", "seed": 5000})
+    assert r.status_code == 429 and "0 games" in r.json()["error"]
+
+
+@pytest.mark.parametrize("raw", [b"{not json", b'{"seed": Infinity}', b"[1, 2]"])
+def test_a_malformed_game_request_is_a_400(client, raw):
+    r = client.post("/api/game", content=raw, headers={"content-type": "application/json"})
+    assert r.status_code == 400
+
+
+def test_a_malformed_since_is_a_400(client):
+    assert client.get("/api/game/no-such-game", params={"since": "abc"}).status_code == 400
+
+
+def test_a_request_body_over_4_kb_is_refused(client):
+    r = client.post("/api/game", json={"partner": "nobody", "pad": "x" * 5000})
+    assert r.status_code == 413
+
+
+def test_a_game_keeps_a_bounded_number_of_query_events():
+    game = LiveGame("live-test-cap", "glove", "everyone", "k", 5000, "watch", False, "codebook", 0.0, [], [])
+    for _ in range(MAX_QUERY_EVENTS + 5):
+        game.add({"kind": "query"})
+    game.add({"kind": "end"})
+    kinds = [e["kind"] for e in game.events]
+    assert kinds.count("query") == MAX_QUERY_EVENTS and kinds[-1] == "end"
 
 
 def test_the_page_and_every_file_it_loads_are_served(client):

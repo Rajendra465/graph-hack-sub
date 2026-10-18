@@ -7,6 +7,7 @@ tagged with that game and streamed to the page with its exact Cypher text and ti
 from __future__ import annotations
 
 import itertools
+import json
 import os
 import queue
 import sys
@@ -42,10 +43,10 @@ STATIC = Path(__file__).resolve().parent / "static"
 _current = threading.local()
 HUMAN = "you"
 CLUE_GIVERS = ("codebook", "claude", "claude-sonnet", "codex")
-MAX_RUNNING = 4          # games playing at once
-MAX_KEPT = 50            # finished games kept for the page
-HUMAN_WAIT_S = 300       # an unanswered human turn ends the game
+MAX_KEPT = 50            # finished games kept for the page (games at once and the human wait: settings)
 MAX_SEED = 10**9
+MAX_QUERY_EVENTS = 5000  # query events kept per game, so graph requests can't grow one without bound
+MAX_BODY = 4096          # bytes in a request body
 
 
 @dataclass
@@ -71,6 +72,7 @@ class LiveGame:
     logged: dict | None = None      # that set-up's logged game on this board
     replay: bool = False            # an AI clue-giver's clues come from `logged`
     matches_log: bool | None = None  # at the end: did the live game make the logged game's moves?
+    queries: int = 0                 # query events kept so far (at most MAX_QUERY_EVENTS)
 
     @property
     def benchmark_game(self) -> str | None:
@@ -78,6 +80,10 @@ class LiveGame:
 
     def add(self, event: dict) -> None:
         with self.lock:
+            if event.get("kind") == "query":
+                if self.queries >= MAX_QUERY_EVENTS:
+                    return
+                self.queries += 1
             event["i"] = len(self.events)
             event["t"] = round(time.time(), 3)
             self.events.append(event)
@@ -95,7 +101,7 @@ class LiveApp:
         self.memory = Memory(self.db)
         self.games: dict[str, LiveGame] = {}
         self.ids = itertools.count(1)
-        self.running = threading.BoundedSemaphore(MAX_RUNNING)
+        self.running = threading.BoundedSemaphore(settings.max_games)
         self.specs: dict[str, object] = {}
         self.db.on_query(self._on_query)
 
@@ -123,7 +129,7 @@ class LiveApp:
         try:
             seed = int(body.get("seed", 5000))
             delay = min(3.0, max(0.0, float(body.get("delay", 1.0))))
-        except (TypeError, ValueError) as exc:
+        except (TypeError, ValueError, OverflowError) as exc:
             raise ValueError("seed and delay must be numbers") from exc
         if not 0 <= seed <= MAX_SEED:
             raise ValueError(f"seed must be between 0 and {MAX_SEED}")
@@ -141,7 +147,7 @@ class LiveApp:
                              "clue-giver, the partner's own memory, and learning off")
         logged = self._logged(partner, condition, seed, clue_giver, required=replay)
         if not self.running.acquire(blocking=False):
-            raise OverflowError(f"{MAX_RUNNING} games are already running; try again shortly")
+            raise OverflowError(f"{self.settings.max_games} games are already running; try again shortly")
         try:  # from here on a failure must give the slot back
             if memory_of == "everyone":
                 read_key = keys.POPULATION
@@ -192,6 +198,8 @@ class LiveApp:
         engine()
         from players.guesser import Guesser  # noqa: PLC0415 - vendored package
 
+        wait = self.settings.human_wait_s
+
         class WebGuesser(Guesser):
             def __init__(self):
                 super().__init__()
@@ -209,9 +217,9 @@ class LiveApp:
             def get_answer(self):
                 game.add({"kind": "your_turn", "left": self.left})
                 try:
-                    word = game.inbox.get(timeout=HUMAN_WAIT_S)
+                    word = game.inbox.get(timeout=wait)
                 except queue.Empty as exc:
-                    raise TurnLimit(f"{game.gid}: no answer for {HUMAN_WAIT_S} s") from exc
+                    raise TurnLimit(f"{game.gid}: no answer for {wait} s") from exc
                 if word is None:
                     return None
                 self.left -= 1
@@ -340,6 +348,21 @@ class LiveApp:
         return options[0].clue
 
 
+class BodyTooLarge(ValueError):
+    """A request body longer than MAX_BODY bytes."""
+
+
+async def read_json(request: Request):
+    """The request's JSON body, reading at most MAX_BODY bytes even when no length is sent."""
+    size, chunks = 0, []
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > MAX_BODY:
+            raise BodyTooLarge(f"the request body is over {MAX_BODY} bytes")
+        chunks.append(chunk)
+    return json.loads(b"".join(chunks) or b"null")
+
+
 def create_app(settings: config.Settings | None = None) -> Starlette:
     live = LiveApp(settings or config.load())
 
@@ -359,7 +382,12 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
             return ok({"error": str(exc)}, 404)
 
     async def new_game(request: Request):
-        body = await request.json()
+        try:
+            body = await read_json(request)
+        except BodyTooLarge as exc:
+            return ok({"error": str(exc)}, 413)
+        except ValueError:
+            return ok({"error": "expected a JSON object"}, 400)
         if not isinstance(body, dict):
             return ok({"error": "expected a JSON object"}, 400)
         try:
@@ -372,10 +400,13 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
                    "read_key": game.read_key, "benchmark_game": game.benchmark_game, "replay": game.replay})
 
     def game_state(request: Request):
+        try:
+            since = max(0, int(request.query_params.get("since", 0)))
+        except ValueError:
+            return ok({"error": "since must be a whole number"}, 400)
         game = live.games.get(request.path_params["gid"])
         if game is None:
             return ok({"error": "no such game"}, 404)
-        since = int(request.query_params.get("since", 0))
         return ok({"status": game.status, "error": game.error, "events": game.since(since),
                    "result": game.result, "partner": game.partner, "seed": game.seed, "read_key": game.read_key,
                    "words": [w.lower() for w in game.words], "key": game.key,
@@ -385,7 +416,12 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
         game = live.games.get(request.path_params["gid"])
         if game is None:
             return ok({"error": "no such game"}, 404)
-        body = await request.json()
+        try:
+            body = await read_json(request)
+        except BodyTooLarge as exc:
+            return ok({"error": str(exc)}, 413)
+        except ValueError:
+            return ok({"error": "expected a JSON object"}, 400)
         word = body.get("word") if isinstance(body, dict) else None
         if word is not None and (not isinstance(word, str) or word.upper() not in game.words):
             return ok({"error": "not a word on this board"}, 400)
