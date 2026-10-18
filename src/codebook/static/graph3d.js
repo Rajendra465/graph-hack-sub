@@ -7,6 +7,11 @@
   const LINK = { direct: '#7EA2F2', reverse: '#9DD3FF', chain: '#D7A6FF', bomb: '#FF4D5E' };
   const FALLBACK_ROWS = 14;
   const FLIGHT_MS = 1200;
+  const FIT_PADDING = 40;
+  const LINK_DISTANCE = 60;
+  const CHARGE = -140;
+  const LAYOUT_MS = 2500;  // the layout stops (and the camera frames the clue) after this, however slow the GPU
+  const LABELLED_VIAS = 10;  // the strongest via words get labels; the rest show on click
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const idOf = (end) => (end && typeof end === 'object' ? end.id : end);
@@ -52,11 +57,17 @@
       .sort((a, b) => b.s - a.s);
   }
 
-  function flyToClue() {
-    const n = data.nodes.find((x) => x.id === clue);
-    if (!fg || !n || n.x === undefined) return;
-    const k = 1 + 240 / (Math.hypot(n.x, n.y, n.z) || 1);
-    fg.cameraPosition({ x: n.x * k, y: n.y * k, z: n.z * k + 60 }, { x: n.x, y: n.y, z: n.z }, reduced ? 0 : FLIGHT_MS);
+  function fitToClue() {  // frame the clue, its via words, the words it aims at and the path to the bomb
+    if (!fg) return;
+    const focus = new Set([clue]);
+    for (const n of data.nodes) if (n.kind === 'via' || n.aim) focus.add(n.id);
+    for (const l of data.links) {
+      if (l.kind !== 'bomb') continue;
+      focus.add(idOf(l.source));
+      focus.add(idOf(l.target));
+    }
+    const filter = focus.size >= 3 ? (n) => focus.has(n.id) : () => true;
+    fg.zoomToFit(reduced ? 0 : FLIGHT_MS, FIT_PADDING, filter);
   }
 
   function followLabels() {  // HTML labels follow their nodes every frame
@@ -90,13 +101,15 @@
       .linkDirectionalParticleSpeed((l) => 0.004 + Math.min(0.01, (l.s || 0) * 0.05))
       .linkDirectionalParticleColor((l) => LINK[l.kind] || '#FFFFFF')
       .cooldownTicks(120)
+      .cooldownTime(LAYOUT_MS)
       .onNodeClick((n) => onPick && onPick(n.id, linksOf(n.id)))
       .onEngineStop(() => {
         if (!flyPending) return;
         flyPending = false;
-        flyToClue();
+        fitToClue();
       });
-    fg.d3Force('charge').strength(-90);
+    fg.d3Force('charge').strength(CHARGE);
+    fg.d3Force('link').distance(LINK_DISTANCE);
     labelLayer = document.createElement('div');
     labelLayer.className = 'graph-labels';
     host.appendChild(labelLayer);
@@ -105,10 +118,27 @@
     return fg;
   }
 
+  function labelledVias() {
+    const strongest = new Map();
+    const onBombPath = new Set();
+    for (const l of data.links) {
+      for (const end of [idOf(l.source), idOf(l.target)]) {
+        strongest.set(end, Math.max(strongest.get(end) || 0, l.s));
+        if (l.kind === 'bomb') onBombPath.add(end);
+      }
+    }
+    const top = data.nodes.filter((n) => n.kind === 'via')
+      .sort((a, b) => (strongest.get(b.id) || 0) - (strongest.get(a.id) || 0))
+      .slice(0, LABELLED_VIAS).map((n) => n.id);
+    return new Set([...top, ...onBombPath]);
+  }
+
   function makeLabels() {
     labelLayer.textContent = '';
     labels = new Map();
+    const vias = labelledVias();
     for (const n of data.nodes) {
+      if (n.kind === 'via' && !vias.has(n.id)) continue;
       const el = document.createElement('span');
       el.className = ['glabel', n.kind, n.role || '', n.revealed ? 'revealed' : '', n.aim ? 'aim' : ''].join(' ');
       el.textContent = n.kind === 'board' ? n.id.toUpperCase() : n.id;

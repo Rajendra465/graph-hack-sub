@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 from starlette.testclient import TestClient
 
@@ -33,3 +35,12 @@ def test_board_graph_route_refuses_bad_requests(client, params):
 def test_game_graph_route_answers_404_and_400(client):
     assert client.get("/api/game/no-such-game/graph").status_code == 404
     assert client.get("/api/game/no-such-game/graph", params={"turn": "0"}).status_code == 400
+
+
+def test_the_page_and_every_file_it_loads_are_served(client):
+    page = client.get("/")
+    assert page.status_code == 200 and 'id="graph3d"' in page.text
+    files = re.findall(r'"/static/([\w.-]+)"', page.text)
+    assert {"app.css", "app.js", "graph3d.js", "tour.js", "panels.js", "scenarios.js"} <= set(files)
+    for name in files:
+        assert client.get(f"/static/{name}").status_code == 200, name

@@ -57,7 +57,7 @@ input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); }
 /* board */
 .board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; perspective: 900px; }
 .tile { position: relative; display: flex; align-items: center; justify-content: center; min-height: 64px; padding: 10px 6px; border-radius: 12px;
-  font: 800 14px var(--display); letter-spacing: .8px; text-align: center; overflow-wrap: anywhere; background: linear-gradient(180deg, #1D2546, #161C38);
+  font: 800 clamp(11px, 0.9vw, 14px) var(--display); letter-spacing: .6px; text-align: center; overflow-wrap: anywhere; background: linear-gradient(180deg, #1D2546, #161C38);
   border: 1px solid var(--line); box-shadow: 0 6px 16px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .05); transform-style: preserve-3d;
   transition: background .3s, color .3s, box-shadow .3s; }
 .tile.keyed::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 7px; height: 4px; border-radius: 2px; opacity: .9; }
