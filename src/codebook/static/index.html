@@ -3,332 +3,115 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Codebook live view</title>
+<title>Codebook · live view</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700&family=Nunito+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<style>
-:root {
-  --bg: #F4EFE4; --panel: #FBF8F1; --line: #DED5C2; --ink: #151A2E; --muted: #6B7085;
-  --blue: #2F5BC2; --blue-soft: #DCE4F7; --orange: #F08A5D; --orange-deep: #B8501F;
-  --neutral: #E6DCC6; --bomb: #151A2E; --good: #2E7D4F;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #151A2E; --panel: #1F2640; --line: #313A5C; --ink: #F4EFE4; --muted: #8A91AB;
-    --blue: #7EA2F2; --blue-soft: #243A6B; --neutral: #3A4262; --bomb: #05070D;
-  }
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.45 'Nunito Sans', Arial, sans-serif; }
-header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;
-  padding: 14px 24px; border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 2; }
-h1 { font: 700 24px 'Rubik', Arial, sans-serif; margin: 0; letter-spacing: -0.5px; }
-h1 span { color: var(--blue); }
-.tag { color: var(--muted); font-size: 13px; }
-.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
-label { display: flex; flex-direction: column; font-size: 11px; font-weight: 700; letter-spacing: .6px;
-  text-transform: uppercase; color: var(--muted); gap: 3px; }
-select, input { font: 600 14px 'Nunito Sans', Arial, sans-serif; color: var(--ink); background: var(--bg);
-  border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; min-width: 80px; }
-input[type=checkbox] { min-width: 0; width: 18px; height: 18px; }
-button { font: 700 14px 'Nunito Sans', Arial, sans-serif; border: 0; border-radius: 8px; padding: 9px 16px;
-  background: var(--blue); color: #fff; cursor: pointer; }
-button.ghost { background: transparent; color: var(--blue); border: 1px solid var(--blue); }
-button:disabled { opacity: .45; cursor: default; }
-main { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; padding: 20px 24px; }
-@media (max-width: 1000px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 12px 16px; } }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
-.board { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
-.tile { position: relative; border-radius: 10px; padding: 18px 6px; text-align: center; font: 700 14px 'Rubik', Arial, sans-serif;
-  letter-spacing: .6px; background: var(--bg); border: 1px solid var(--line); cursor: default; overflow-wrap: anywhere;
-  transition: background .25s, color .25s, transform .15s; }
-.tile.keyed::before { content: ""; position: absolute; left: 6px; right: 6px; bottom: 5px; height: 4px; border-radius: 2px; }
-.tile.keyed.team::before { background: var(--blue); } .tile.keyed.opponent::before { background: var(--orange); }
-.tile.keyed.assassin::before { background: var(--bomb); } .tile.keyed.neutral::before { background: var(--neutral); }
-.tile.target { outline: 3px solid var(--blue); outline-offset: -3px; }
-.tile.r-team { background: var(--blue); color: #fff; } .tile.r-opponent { background: var(--orange); color: #fff; }
-.tile.r-neutral { background: var(--neutral); color: var(--muted); }
-.tile.r-assassin { background: var(--bomb); color: #fff; border: 2px solid var(--orange-deep); box-shadow: 0 0 0 3px var(--orange); }
-.tile.r-assassin::after { content: "BOMB"; display: block; font-size: 10px; letter-spacing: 1.5px; color: var(--orange); margin-top: 2px; }
-.tile.clickable { cursor: pointer; } .tile.clickable:hover { transform: translateY(-2px); border-color: var(--blue); }
-.clue { display: flex; flex-wrap: wrap; gap: 14px; align-items: baseline; margin: 16px 0 6px; }
-.clue .word { font: 700 44px 'Rubik', Arial, sans-serif; letter-spacing: -1px; }
-.clue .meta { color: var(--muted); font-size: 14px; }
-.status { font-weight: 700; font-size: 14px; } .status.won { color: var(--good); } .status.lost, .status.error { color: var(--orange-deep); }
-.blocks { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
-.block { border-left: 4px solid var(--orange-deep); background: var(--bg); border-radius: 6px; padding: 6px 10px; font-size: 13px; }
-.block b { font-family: 'JetBrains Mono', monospace; }
-.log { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; max-height: 260px; overflow: auto; }
-.turn { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; }
-.turn .c { font: 700 13px 'Rubik', Arial, sans-serif; min-width: 120px; }
-.chip { border-radius: 999px; padding: 2px 9px; font-weight: 700; font-size: 12px; }
-.chip.team { background: var(--blue); color: #fff; } .chip.opponent { background: var(--orange); color: #fff; }
-.chip.neutral { background: var(--neutral); color: var(--muted); } .chip.assassin { background: var(--bomb); color: #fff; }
-.tabs { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-.tabs button { background: transparent; color: var(--muted); border: 1px solid var(--line); padding: 6px 12px; }
-.tabs button.on { background: var(--blue); color: #fff; border-color: var(--blue); }
-.q { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; background: var(--bg); }
-.q summary { cursor: pointer; padding: 6px 10px; display: flex; gap: 10px; align-items: center; font-size: 13px; list-style: none; }
-.q summary .n { font: 600 13px 'JetBrains Mono', monospace; color: var(--blue); min-width: 110px; }
-.q summary .k { color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.q pre { margin: 0; padding: 8px 10px; border-top: 1px solid var(--line); font: 12px/1.5 'JetBrains Mono', monospace;
-  white-space: pre-wrap; overflow-wrap: anywhere; }
-.q .p { color: var(--muted); }
-.bars { display: grid; grid-template-columns: 70px 1fr 50px; gap: 6px 10px; align-items: center; font-size: 13px; margin: 8px 0 14px; }
-.bar { height: 10px; border-radius: 5px; background: var(--line); position: relative; overflow: hidden; }
-.bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--blue); border-radius: 5px; }
-.bar s { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--orange-deep); }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); }
-th { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
-td.m { font-family: 'JetBrains Mono', monospace; }
-.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
-.stat { background: var(--bg); border-radius: 8px; padding: 8px; } .stat b { display: block; font: 700 20px 'Rubik', Arial, sans-serif; }
-.stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
-.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-.opt { background: var(--bg); border-radius: 8px; padding: 8px; margin-bottom: 6px; font-size: 13px; }
-.opt b { font: 700 15px 'Rubik', Arial, sans-serif; }
-.muted { color: var(--muted); } .hidden { display: none !important; }
-.your-turn { margin-top: 10px; display: flex; gap: 10px; align-items: center; font-weight: 700; }
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,500;0,700;0,800;1,800&family=Nunito+Sans:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-<header>
-  <div><h1>Code<span>book</span></h1><div class="tag">A clue-giver with a memory of each partner, in FalkorDB</div></div>
-  <div class="controls">
-    <label>Partner<select id="partner"></select></label>
-    <label>Memory<select id="memory"><option value="own">their own</option><option value="everyone">everyone's</option></select></label>
-    <label>Board seed<input id="seed" type="number" value="5000" style="width:96px"></label>
-    <label>Clue-giver<select id="giver"><option value="codebook">Codebook</option><option value="claude-sonnet">Claude Sonnet (+memory)</option><option value="claude">Claude Haiku (+memory)</option><option value="codex">Codex (+memory)</option></select></label>
-    <label>Learn<input id="learn" type="checkbox"></label>
-    <label title="With an AI clue-giver: take its clues from the final run's log, so the logged game replays live">Replay log<input id="replay" type="checkbox"></label>
-    <label>Speed<select id="delay"><option value="1.2">slow</option><option value="0.5" selected>normal</option><option value="0">fast</option></select></label>
-    <button id="start">Start game</button>
+<header class="topbar">
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 100 100" aria-hidden="true"><rect x="6" y="6" width="88" height="88" rx="22" fill="#0E1430" stroke="#7EA2F2" stroke-width="4"/><g stroke="#7EA2F2" stroke-width="4" stroke-linecap="round"><line x1="30" y1="32" x2="70" y2="40"/><line x1="70" y1="40" x2="58" y2="72"/><line x1="58" y1="72" x2="28" y2="64"/><line x1="28" y1="64" x2="30" y2="32"/><line x1="30" y1="32" x2="58" y2="72"/></g><circle cx="30" cy="32" r="7" fill="#F4EFE4"/><circle cx="70" cy="40" r="9" fill="#F28C38"/><circle cx="58" cy="72" r="7" fill="#F4EFE4"/><circle cx="28" cy="64" r="7" fill="#F4EFE4"/></svg>
+    <div><h1>Code<span>book</span></h1><p class="tag">One memory per partner, each a graph in FalkorDB</p></div>
   </div>
+  <nav class="actions">
+    <button class="ghost" id="openScenarios" type="button">Scenarios</button>
+    <button class="ghost" id="openTour" type="button">60-second tour</button>
+    <button class="primary" id="openCustom" type="button">Custom game</button>
+  </nav>
 </header>
-<main>
-  <section>
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap">
-        <div class="muted" id="gameinfo">Pick a partner and press Start.</div>
-        <div class="status" id="status"></div>
-      </div>
+
+<main class="stage">
+  <section class="col">
+    <article class="card" id="gamecard">
+      <header class="card-head">
+        <h2>The board <button class="info" type="button" aria-label="About the board" data-tip="Codenames: Codebook gives a one-word clue and a number; the partner picks that many words. Blue cards are our team's, orange the other team's, grey neutral. Picking the dark card, the bomb, loses the game.">i</button></h2>
+        <div class="status" id="status" role="status"></div>
+      </header>
+      <div class="muted gameinfo" id="gameinfo">Pick a scenario to start.</div>
       <div class="board" id="board"></div>
-      <div class="clue"><span class="word" id="clueword">&nbsp;</span><span class="meta" id="cluemeta"></span></div>
-      <div class="your-turn hidden" id="yourturn">Your turn: click a word. <button class="ghost" id="endturn">End turn</button></div>
+      <div class="legend" aria-label="Card colours">
+        <span><i class="sw team"></i>our team</span><span><i class="sw opponent"></i>other team</span><span><i class="sw neutral"></i>neutral</span><span><i class="sw assassin"></i>the bomb</span>
+      </div>
+      <div class="clue"><span class="label">clue</span><span class="word" id="clueword">&nbsp;</span><span class="meta" id="cluemeta"></span></div>
+      <p class="narration" id="narration" aria-live="polite">Codebook reads its memory of a partner, picks a clue, and learns from the guesses.</p>
+      <div class="your-turn hidden" id="yourturn">Your turn: click a word. <button class="ghost" id="endturn" type="button">End turn</button></div>
+      <div class="result hidden" id="result"></div>
       <div class="blocks" id="blocks"></div>
       <div class="log" id="log"></div>
-    </div>
+    </article>
   </section>
-  <section class="card">
-    <div class="tabs">
-      <button data-tab="queries" class="on">Live Cypher</button>
-      <button data-tab="memory">Partner memory</button>
-      <button data-tab="compare">Compare memories</button>
-      <button data-tab="all">All queries</button>
-    </div>
-    <div id="tab-queries"><div class="muted" id="qsum">Queries for the current game appear here, newest first.</div><div id="qlist"></div></div>
-    <div id="tab-memory" class="hidden"></div>
-    <div id="tab-compare" class="hidden"><div class="muted">Top clues for this board from each memory. <input id="cmpmems" placeholder="everyone,w2v,persona-leaper" style="width:260px"> <button class="ghost" id="cmpgo">Compare</button></div><div id="cmp"></div></div>
-    <div id="tab-all" class="hidden"></div>
+
+  <section class="col">
+    <article class="card graph-card" id="graphcard">
+      <header class="card-head">
+        <h2>This partner's memory, live <button class="info" type="button" aria-label="About the memory graph" data-tip="The words around the current clue in the memory Codebook is reading: a real FalkorDB graph, fetched with three read-only Cypher queries. Drag to turn it, scroll to zoom, click a word to see its links.">i</button></h2>
+        <span class="muted" id="graphinfo">from FalkorDB</span>
+      </header>
+      <div class="graph" id="graph3d"><p class="graph-empty">Start a game: the words around each clue appear here, straight from the partner's graph.</p></div>
+      <div class="legend links" aria-label="Link kinds">
+        <span><i class="ln direct"></i>direct</span><span><i class="ln reverse"></i>backwards</span><span><i class="ln chain"></i>two steps</span><span><i class="ln bomb"></i>path to the bomb</span>
+      </div>
+      <div class="nodecard hidden" id="nodecard"></div>
+    </article>
+
+    <article class="card" id="tabscard">
+      <div class="tabs" role="tablist">
+        <button data-tab="queries" class="on" type="button">Live Cypher</button>
+        <button data-tab="memory" type="button">Partner memory</button>
+        <button data-tab="compare" type="button">Compare memories</button>
+        <button data-tab="all" type="button">All queries</button>
+      </div>
+      <p class="explain" id="tabexplain"></p>
+      <div id="tab-queries"><div class="muted" id="qsum">Queries for the current game appear here, newest first.</div><div id="qlist"></div></div>
+      <div id="tab-memory" class="hidden"></div>
+      <div id="tab-compare" class="hidden"><div class="cmp-bar"><input id="cmpmems" placeholder="everyone,w2v,persona-leaper" aria-label="Memories to compare"><button class="ghost" id="cmpgo" type="button">Compare</button></div><div id="cmp"></div></div>
+      <div id="tab-all" class="hidden"></div>
+    </article>
   </section>
 </main>
-<script>
-const $ = (id) => document.getElementById(id);
-const num = (x) => { const n = Number(x); return Number.isFinite(n) ? n : 0; };
-const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const DEFAULT_STYLE = {direct: 3.0, reverse: 1.5, chain: 1.5, shared: 1.5};
-let game = null, since = 0, timer = null, roles = {}, queries = [], partnersInfo = [], polling = false, humanGame = false;
 
-async function api(path, opts) {
-  const r = await fetch(path, opts);
-  const j = await r.json();
-  if (!r.ok) throw new Error(j.error || r.statusText);
-  return j;
-}
+<div class="overlay hidden" id="scenarios" role="dialog" aria-modal="true" aria-labelledby="sc-title">
+  <div class="sheet">
+    <p class="kicker">Graph Hacks 2026 · Track 02 · Agent memory</p>
+    <h2 id="sc-title">Every partner gets their own <span>codebook</span>.</h2>
+    <p class="lead">Codebook is an AI clue-giver for the word game Codenames. It keeps <b>one memory per partner</b>, a graph in FalkorDB, learns how that partner thinks from every guess, and plays better with them. Pick a scenario: each one is a real game.</p>
+    <div class="cards">
+      <button class="scenario" data-scenario="memories" type="button"><span class="num">1</span><h3>Same board, two memories</h3><p>A bot plays board 6030 with everyone's memory, then with its own. Watch the bomb, then the win.</p><span class="foot">about 60 s · real benchmark games</span></button>
+      <button class="scenario" data-scenario="handover" type="button"><span class="num">2</span><h3>Another AI takes over</h3><p>Claude Sonnet gives the clues, choosing from the bot's memory through Codebook's tools.</p><span class="foot">about 20 s · replayed from the log</span></button>
+      <button class="scenario" data-scenario="play" type="button"><span class="num">3</span><h3>Play it yourself</h3><p>You guess. Every pick changes your own memory, a new graph in FalkorDB.</p><span class="foot">your pace · learning on</span></button>
+      <button class="scenario" data-scenario="explore" type="button"><span class="num">4</span><h3>Explore a memory</h3><p>See a partner's graph around a board in 3D, and compare the clue each memory picks.</p><span class="foot">instant · no game</span></button>
+    </div>
+    <div class="sheet-foot"><button class="primary" id="tourbtn" type="button">Take the 60-second tour</button><button class="ghost" id="closeScenarios" type="button">Just look around</button></div>
+  </div>
+</div>
 
-async function loadPartners() {
-  const j = await api('/api/partners');
-  partnersInfo = j.partners;
-  const keepPartner = $('partner').value, keepMemory = $('memory').value;
-  $('partner').innerHTML = j.available.map(p => `<option value="${esc(p)}">${p === 'you' ? 'you (play as guesser)' : esc(p)}</option>`).join('');
-  const mem = $('memory');
-  mem.innerHTML = '<option value="own">their own</option><option value="everyone">everyone\'s</option>' +
-    j.partners.map(p => `<option value="${esc(p.id)}">${esc(p.id)}'s (swap)</option>`).join('');
-  if (keepPartner && j.available.includes(keepPartner)) $('partner').value = keepPartner;
-  if (keepMemory && [...mem.options].some(o => o.value === keepMemory)) mem.value = keepMemory;
-}
+<aside class="drawer" id="custom" aria-hidden="true" aria-labelledby="custom-title">
+  <h2 id="custom-title">Custom game</h2>
+  <p class="explain">Any partner, any memory, any board. The same board seed always deals the same board.</p>
+  <label>Partner <small>who guesses</small><select id="partner"></select></label>
+  <label>Memory <small>whose memory Codebook reads</small><select id="memory"><option value="own">their own</option><option value="everyone">everyone's</option></select></label>
+  <label>Board seed <small>6000-6199 are the benchmark's test boards</small><input id="seed" type="number" value="6030"></label>
+  <label>Clue-giver<select id="giver"><option value="codebook">Codebook</option><option value="claude-sonnet">Claude Sonnet (+memory)</option><option value="claude">Claude Haiku (+memory)</option><option value="codex">Codex (+memory)</option></select></label>
+  <label class="check"><input id="learn" type="checkbox"> Learn from this game <small>writes to the partner's own memory</small></label>
+  <label class="check" title="With an AI clue-giver: take its clues from the final run's log, so the logged game replays live"><input id="replay" type="checkbox"> Replay the AI's logged clues</label>
+  <label>Speed<select id="delay"><option value="1.2">slow</option><option value="0.5" selected>normal</option><option value="0">fast</option></select></label>
+  <div class="drawer-foot"><button class="primary" id="start" type="button">Start game</button><button class="ghost" id="closeCustom" type="button">Close</button></div>
+</aside>
 
-function renderBoard(words, key) {
-  roles = {};
-  const human = $('partner').value === 'you';
-  $('board').innerHTML = words.map((w, i) => {
-    const role = {Red: 'team', Blue: 'opponent', Civilian: 'neutral', Assassin: 'assassin'}[key[i]];
-    roles[w] = role;
-    return `<div class="tile ${human ? 'clickable' : 'keyed ' + role}" data-w="${esc(w)}">${esc(w.toUpperCase())}</div>`;
-  }).join('');
-  document.querySelectorAll('.tile.clickable').forEach(t => t.onclick = () => guess(t.dataset.w));
-}
+<div class="tour hidden" id="tour" role="dialog" aria-live="polite">
+  <div class="tour-spot" id="tourspot"></div>
+  <div class="tour-tip" id="tourtip"><p class="tour-step" id="tourstep"></p><p id="tourtext"></p>
+    <div class="tour-nav"><button class="ghost" id="tourback" type="button">Back</button><button class="primary" id="tournext" type="button">Next</button><button class="link" id="tourskip" type="button">Skip</button></div></div>
+</div>
+<div class="tooltip hidden" id="tooltip" role="tooltip"></div>
 
-function gameInfo(seed, partner, readKey, bench, replay) {
-  return `Board ${num(seed)} · partner <b>${esc(partner)}</b> · memory <b>${esc(readKey)}</b>` +
-    (bench ? ` · same set-up as benchmark game <b>${esc(bench)}</b>${replay ? " (the AI's clues come from the log)" : ''}` : '');
-}
-
-function endStatus(j) {  // plain text: the caller sets textContent
-  if (j.status === 'error') return j.error;
-  const s = j.status === 'won' ? `Won in ${num(j.result.turns)} turns` : `Lost (${j.result.assassin ? 'bomb' : 'turn limit or opponent'})`;
-  return s + (j.matches_log === true ? ' · matches the benchmark log' : j.matches_log === false ? ' · differs from the benchmark log' : '');
-}
-
-async function start() {
-  clearInterval(timer);
-  $('blocks').innerHTML = ''; $('log').innerHTML = ''; $('qlist').innerHTML = ''; queries = [];
-  $('clueword').innerHTML = '&nbsp;'; $('cluemeta').textContent = ''; $('status').textContent = '';
-  const body = {partner: $('partner').value, memory: $('memory').value, seed: +$('seed').value,
-    clue_giver: $('giver').value, learn: $('learn').checked, replay: $('replay').checked, delay: +$('delay').value};
-  try {
-    const j = await api('/api/game', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
-    game = j.game; since = 0; humanGame = body.partner === 'you';
-    renderBoard(j.words, j.key);
-    $('gameinfo').innerHTML = gameInfo(body.seed, body.partner, j.read_key, j.benchmark_game, j.replay);
-    timer = setInterval(poll, 400);
-    if (body.partner !== 'you') showMemory(body.memory === 'own' ? body.partner : body.memory);
-    compare();
-  } catch (e) { $('status').textContent = e.message; $('status').className = 'status error'; }
-}
-
-async function poll() {
-  // One poll at a time: when the server is slow, overlapping polls would deliver the same events twice.
-  if (!game || polling) return;
-  const g = game;
-  polling = true;
-  try {
-    const j = await api(`/api/game/${encodeURIComponent(g)}?since=${since}`);
-    if (g !== game) return;  // a new game started while this poll was in flight
-    for (const ev of j.events) { if (ev.i < since) continue; since = ev.i + 1; handle(ev); }
-    if (j.status !== 'running') {
-      clearInterval(timer);
-      $('status').textContent = endStatus(j);
-      $('status').className = 'status ' + j.status;
-      $('yourturn').classList.add('hidden');
-      const p = $('partner').value; if (p !== 'you') showMemory($('memory').value === 'own' ? p : $('memory').value);
-      loadPartners().catch(() => {});
-    }
-  } finally {
-    polling = false;
-  }
-}
-
-function handle(ev) {
-  if (ev.kind === 'query') { queries.unshift(ev); renderQueries(); return; }
-  if (ev.kind === 'clue') {
-    const o = ev.option;
-    // A human guesser must not see which words the clue aims at.
-    document.querySelectorAll('.tile').forEach(t => t.classList.toggle('target', !humanGame && o.targets.includes(t.dataset.w)));
-    $('clueword').textContent = `${o.clue.toUpperCase()} · ${num(o.count)}`;
-    $('cluemeta').innerHTML = humanGame ? `${num(o.count)} word${o.count === 1 ? '' : 's'} · by ${esc(ev.proposed_by)}`
-      : `aiming at <b>${esc(o.targets.join(', ').toUpperCase())}</b> · expected ${num(o.expected_hits)} right · bomb risk ${(o.p_assassin * 100).toFixed(1)}% · by ${esc(ev.proposed_by)}${ev.forced ? ' · <b>forced (all blocked)</b>' : ''}`;
-    const row = document.createElement('div'); row.className = 'turn'; row.id = 'turn-' + ev.turn;
-    row.innerHTML = `<span class="c">${num(ev.turn)}. ${esc(o.clue.toUpperCase())} ${num(o.count)}</span>`;
-    $('log').prepend(row);
-  } else if (ev.kind === 'guess') {
-    const t = document.querySelector(`.tile[data-w="${CSS.escape(ev.word)}"]`);
-    if (t) { t.classList.remove('target', 'clickable'); t.classList.add('r-' + ev.role); t.onclick = null; }
-    const row = $('log').firstElementChild;
-    if (row) row.insertAdjacentHTML('beforeend', `<span class="chip ${esc(ev.role)}">${esc(ev.word.toUpperCase())}</span>`);
-  } else if (ev.kind === 'block') {
-    $('blocks').insertAdjacentHTML('afterbegin', `<div class="block">Blocked <b>${esc(ev.clue.toUpperCase())}</b>${ev.proposed_by !== 'codebook' ? ' (proposed by ' + esc(ev.proposed_by) + ')' : ''}: ${ev.path.length ? '<b>' + esc(ev.path.join(' → ')) + '</b> reaches the bomb, strength ' + ev.strength : 'the model gives the bomb ' + (ev.p_assassin * 100).toFixed(1) + '%'}</div>`);
-  } else if (ev.kind === 'your_turn') {
-    $('yourturn').classList.remove('hidden');
-  } else if (ev.kind === 'refit') {
-    $('log').insertAdjacentHTML('afterbegin', `<div class="turn muted">Memory updated: style ${esc(JSON.stringify(ev.style))}, ${num(ev.biased_words)} favourite words</div>`);
-  } else if (ev.kind === 'error') {
-    $('status').textContent = ev.error; $('status').className = 'status error';
-  }
-}
-
-function renderQueries() {
-  const total = queries.reduce((s, q) => s + q.ms, 0);
-  $('qsum').textContent = `${queries.length} queries this game · ${total.toFixed(0)} ms in FalkorDB`;
-  $('qlist').innerHTML = queries.slice(0, 60).map(q => `<details class="q"><summary><span class="n">${esc(q.name)}</span><span class="k">${esc(q.key)} · ${q.ro ? 'GRAPH.RO_QUERY' : 'GRAPH.QUERY'}</span><span>${num(q.rows)} rows</span><span>${num(q.ms)} ms</span></summary><pre>${esc(q.cypher)}</pre>${q.params ? `<pre class="p">${esc(q.params)}</pre>` : ''}</details>`).join('');
-}
-
-async function guess(word) {
-  if (!game) return;
-  $('yourturn').classList.add('hidden');
-  await api(`/api/game/${encodeURIComponent(game)}/guess`, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({word})});
-}
-
-async function showMemory(pid) {
-  if (!pid || pid === 'everyone') { $('tab-memory').innerHTML = '<div class="muted">Everyone\'s memory is shared and read-only.</div>'; return; }
-  try {
-    const m = await api('/api/memory/' + encodeURIComponent(pid));
-    const max = Math.max(6, ...Object.values(m.style).map(Math.abs));
-    const bars = ['direct', 'reverse', 'chain', 'shared'].map(k => `<span>${k}</span><div class="bar"><i style="width:${Math.max(0, m.style[k] ?? 0) / max * 100}%"></i><s style="left:${DEFAULT_STYLE[k] / max * 100}%"></s></div><span class="m">${(m.style[k] ?? 0).toFixed(2)}</span>`).join('');
-    $('tab-memory').innerHTML = `
-      <div class="stats"><div class="stat"><b>${num(m.games)}</b><span>games</span></div><div class="stat"><b>${num(m.turns)}</b><span>clues</span></div>
-      <div class="stat"><b>${num(m.learned_links)}</b><span>links reweighted</span></div><div class="stat"><b>${m.mb == null ? '–' : num(m.mb)}</b><span>MB in FalkorDB</span></div></div>
-      <div class="muted">${esc(m.key)} · how this partner links words (orange tick = everyone's default)</div>
-      <div class="bars">${bars}</div>
-      <table><tr><th>Clue → word</th><th>everyone</th><th>this partner</th><th>hits</th><th>misses</th></tr>
-      ${m.links.slice(0, 18).map(l => `<tr><td>${esc(l.clue)} → ${esc(l.word)}${l.learned ? ' <span class="chip team">new</span>' : ''}</td><td class="m">${(+l.p).toFixed(3)}</td><td class="m">${(+l.pp).toFixed(3)}</td><td>${num(l.hits)}</td><td>${num(l.misses)}</td></tr>`).join('')}</table>
-      <p class="muted">Words this partner leans towards: ${m.bias.filter(b => b.bias > 0).slice(0, 12).map(b => esc(b.word)).join(', ') || 'none yet'}</p>`;
-  } catch (e) { $('tab-memory').innerHTML = `<div class="muted">${esc(e.message)}</div>`; }
-}
-
-async function compare() {
-  const typed = ($('cmpmems').value || '').split(',').map(x => x.trim()).filter(Boolean);
-  const mems = typed.length ? typed : ['everyone', ...partnersInfo.map(p => p.id).filter(id => !/-at\d+$/.test(id))].slice(0, 4);
-  try {
-    const j = await api(`/api/suggest?seed=${+$('seed').value}&memories=${mems.map(encodeURIComponent).join(',')}`);
-    if (!game && $('partner').value !== 'you') {  // no game on screen: show the board being compared
-      const keyName = {team: 'Red', opponent: 'Blue', neutral: 'Civilian', assassin: 'Assassin'};
-      renderBoard(j.board.map(w => w.toLowerCase()), j.roles.map(r => keyName[r]));
-      $('gameinfo').innerHTML = `Board ${num(+$('seed').value)} · the key as the clue-giver sees it`;
-    }
-    $('cmp').innerHTML = `<div class="cols">${Object.entries(j.by_memory).map(([mem, opts]) => `<div><h4 style="margin:10px 0 6px">${esc(mem)}</h4>${opts.slice(0, 3).map(o => `<div class="opt"><b>${esc(o.clue.toUpperCase())} ${num(o.count)}</b><br><span class="muted">${esc(o.targets.join(', '))} · exp ${num(o.expected_hits)}</span></div>`).join('')}</div>`).join('')}</div>`;
-  } catch (e) { $('cmp').innerHTML = `<div class="muted">${esc(e.message)}</div>`; }
-}
-
-async function allQueries() {
-  const j = await api('/api/cypher');
-  $('tab-all').innerHTML = Object.entries(j).map(([n, t]) => `<details class="q"><summary><span class="n">${esc(n)}</span></summary><pre>${esc(t)}</pre></details>`).join('');
-}
-
-document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
-  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['queries', 'memory', 'compare', 'all'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== b.dataset.tab));
-});
-$('start').onclick = start;
-$('endturn').onclick = () => guess(null);
-$('cmpgo').onclick = compare;
-
-function showTab(name) {
-  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x.dataset.tab === name));
-  ['queries', 'memory', 'compare', 'all'].forEach(t => $('tab-' + t).classList.toggle('hidden', t !== name));
-}
-
-// Links into a view: ?game=<id> replays a game's events, ?tab=memory&mem=w2v, ?tab=compare&seed=6042&memories=a,b
-async function fromUrl() {
-  const q = new URLSearchParams(location.search);
-  if (q.get('seed')) $('seed').value = q.get('seed');
-  if (q.get('memories')) $('cmpmems').value = q.get('memories');
-  if (q.get('game')) {
-    game = q.get('game'); since = 0;
-    const j = await api(`/api/game/${encodeURIComponent(game)}?since=0`);
-    $('partner').value = j.partner; $('seed').value = j.seed; humanGame = j.partner === 'you'; renderBoard(j.words, j.key);
-    $('gameinfo').innerHTML = gameInfo(j.seed, j.partner, j.read_key, j.benchmark_game, j.replay);
-    for (const ev of j.events) { since = ev.i + 1; handle(ev); }
-    if (j.status !== 'running') { $('status').textContent = endStatus(j); $('status').className = 'status ' + j.status; }
-    else timer = setInterval(poll, 400);
-  }
-  if (q.get('mem')) await showMemory(q.get('mem'));
-  if (q.get('tab') === 'compare') await compare();
-  if (q.get('tab')) showTab(q.get('tab'));
-}
-
-loadPartners().then(allQueries).then(fromUrl).catch(e => { $('gameinfo').textContent = 'Server error: ' + e.message; });
-</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js" integrity="sha384-XmJ9SoHtVOHoQUcKvFAzVXwdkKo1Ie3bhmSoIAkcdsHGaIrVJIkmozyq0FJeb/Ly" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/3d-force-graph@1.80.1/dist/3d-force-graph.min.js" integrity="sha384-i98VDQKdpyVrtyuFn0fjUWJBLBmxnqHqOANcvYe9HLJUgT2wPixa4ZkLd7Dh3VEk" crossorigin="anonymous"></script>
+<script src="/static/graph3d.js"></script>
+<script src="/static/tour.js"></script>
+<script src="/static/app.js"></script>
+<script src="/static/panels.js"></script>
+<script src="/static/scenarios.js"></script>
 </body>
 </html>
