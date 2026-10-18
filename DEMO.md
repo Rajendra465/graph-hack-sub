@@ -1,24 +1,20 @@
 # Demo videos
 
-## The submitted video (2:44)
+## The submitted video (3:39)
 
-A narrated, captioned video made in Remotion. Its app screens are real captures of the redesigned live view, and
-its results come from `results/runs/final-20261017-1941-v2/`. The narration is a synthetic voice (the open Kokoro
-text-to-speech model).
+A narrated, captioned video made in Remotion, told in seven parts that are each named on screen. Its app screens are
+real captures of the redesigned live view, and its results come from `results/runs/final-20261017-1941-v2/`. The
+narration is a synthetic voice (the open Kokoro text-to-speech model).
 
-| Time | Chapter |
+| Time | Part |
 |---|---|
-| 0:00 | Same board, two memories: everyone's memory walks the bot into the bomb, its own memory wins |
-| 0:11 | The problem: AI agents forget the people they work with |
-| 0:24 | The game we built to test it: Codenames, with a bot, another AI or you as the partner |
-| 0:42 | How the memory works: everyone's memory in FalkorDB, then a copy per partner that learns |
-| 0:57 | Partner 1, a bot: every clue is a live Cypher query, the 3D memory graph, a blocked clue |
-| 1:16 | Partners 2 and 3: another AI uses the memory through MCP tools; you play and get your own |
-| 1:34 | Architecture: MCP server, command line and live view over one engine and one graph per partner |
-| 1:47 | Why FalkorDB: a graph per partner, copied in under a second, locked to its owner, one file to move |
-| 2:09 | Results: the word2vec bot's bomb hits fell from 32% to 21% on unseen boards; 3 of 4 promises kept |
-| 2:21 | Why it matters: coding assistants, support agents and tutors that remember each person |
-| 2:34 | Try it yourself: one command, four scenarios and a 60-second tour |
+| 0:00 | The problem: an AI assistant forgets how you work, answers you like everyone else, and loses what it learned when it hands work to another agent. Our question: can an agent keep a separate memory of each person, and does it help? |
+| 0:34 | The test: Codenames from both seats (the clue-giver sees the key, the partner sees only words, one card is the bomb), and why a good clue depends on knowing your partner |
+| 1:10 | How it works: everyone's memory as one FalkorDB graph, a copy per partner, and every guess re-weighting that copy |
+| 1:31 | See it work: one board, two memories (everyone's loses on the bomb, the bot's own wins), live Cypher, the 3D memory graph, a blocked clue, Claude borrowing the memory through MCP, and you as the partner |
+| 2:16 | Under the hood: MCP tools, a command line and the live view over one engine; why FalkorDB (a graph per partner, copied in under a second, locked to its owner, one file to move) |
+| 2:55 | Results: bomb hits fell from 32% to 21% on 200 unseen boards, play improved with practice, and 3 of 4 pre-registered promises were kept |
+| 3:13 | Why it matters, then the live demo and GitHub links |
 
 ## The recorded walkthrough (2:19)
 
