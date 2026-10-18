@@ -67,6 +67,7 @@ Problems we solved with it:
 5. Learning: every graded guess MERGEs and re-weights links in that partner's graph (semantic memory). After each game the diary (episodic memory) is consolidated into the partner's style weights, which decide how clues are scored for that partner (procedural memory).
 6. Persistence and handoffs: memory survives restarts (the same replay fingerprint before and after), another AI uses it through MCP tools without database credentials, and DUMP/RESTORE moves one memory to another server as an 11 MB file that restores in 0.4 s.
 7. Learning curves: GRAPH.COPY snapshots after 5, 10 and 20 practice games.
+8. Live deployment: the public demo runs FalkorDB 6.0.2 inside the same container on Google Cloud Run, loaded from a snapshot of these graphs; only the "you" memory learns there, so the benchmark memories stay as logged.
 
 Performance: binding the indexed word first under UNWIND took direct-link reads from 3.1 s to 13 ms and two-step chains from 17.6 s to 117 ms on the 497k-link graph, with identical rows.
 ```
