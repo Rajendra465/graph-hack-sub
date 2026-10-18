@@ -1,67 +1,99 @@
-# Submission text (copy into the WeMakeDevs form)
+# Submission form answers (WeMakeDevs · Graph Hacks)
 
-**Project name:** Codebook
+The form's fields, in order. Copy each answer block as it is: the blocks are plain text, one paragraph per line,
+because the form doesn't render Markdown. The team is set in the event panel, not in the form: **Rubixx**, one
+member, Rajendra Sarpal (leader). The team can't be changed after you submit.
 
-**Tagline (one line):** An AI teammate that learns how you think, remembers it next session, and can hand that
-memory to another AI. One memory per partner, each its own graph in FalkorDB.
+## Part 1 · Project details
 
-**Track:** 02 · Agent Memory and Coordination
+**Project title** (required)
 
-**Links**
-- Repository: [repo URL]
-- Demo video (2:44, narrated and captioned): [video URL]
-- Pitch deck: [deck link]
+```text
+Codebook: an AI teammate with one memory per partner
+```
 
-**Short description (≈60 words)**
+**Description** (required): What problem does your project solve, and who is it for?
 
-AI teammates forget their partner every session. Codebook is a Codenames clue-giver that keeps one memory per
-partner in FalkorDB: a GRAPH.COPY of everyone's word associations that learns from every graded guess, keeps a
-diary, survives restarts, and is shared with other AIs through MCP tools, never database passwords. The
-unmodified Codenames AI Competition engine keeps the score.
+```text
+AI agents forget the people they work with. Every session starts from zero, everyone gets the same generic answers, and nothing one agent learns about you carries over to the next agent.
 
-**Long description**
+Codebook gives an agent a separate memory of each partner it works with. The memory persists, learns from every interaction and can be handed to another agent safely. Each partner's memory is its own graph in FalkorDB: it starts as a copy of everyone's memory (half a million word links) and learns that partner's habits.
 
-People who play word games together build a private shorthand; AI teammates start from zero every time.
-Codebook gives an AI clue-giver two memories, both in FalkorDB: everyone's memory (half a million weighted word
-links) and one memory per partner, a GRAPH.COPY of it that learns. Every turn, Cypher reads four kinds of link
-between candidate clues and the cards (direct, backwards, two-step chains, shared associates); a small model of
-this partner predicts their picks; code blocks any clue whose chain reaches the bomb; and every graded guess
-reweights the partner's own graph. After each game the diary is consolidated into the partner's style, and
-practice games deliberately probe how the partner thinks.
+To test whether that helps, we built a Codenames arena. An AI clue-giver must steer its partner to the right cards and away from the bomb, and the partner can be a bot, another AI or a person playing in the browser. On 200 boards it never saw, a partner's own memory beat everyone's memory for three of four partners; for the word2vec bot, bomb hits fell from 32% to 21%. We kept 3 of the 4 promises we wrote down before testing, and we report the one we missed.
 
-Evaluation was written down and committed before the first test, with a stop rule. On boards the partners never
-saw, scored by the unmodified Codenames AI Competition engine, 3 of 4 promises were kept: a partner's own memory
-beat everyone's memory and beat the wrong partner's memory for three of four partners (the word2vec bot's bomb hits
-fell from 32% to 21%), and it improved steadily over 5, 10 and 20 practice games. GloVe gained nothing significant,
-and the handover to another AI (Claude Sonnet) pointed the right way (bomb hits 40% to 22%) but was not significant
-on 40 boards. Every game is in the repository.
+It is for developers building agents that work with the same people again and again, such as coding assistants, support agents and tutors, who need per-user memory that persists, learns, stays isolated and moves between agents. Codebook ships as a Python package with a command line, six MCP tools and a live view that shows every Cypher query as it runs.
 
-What only FalkorDB made easy: each partner's memory is its own graph key (copied in 0.7 s, exported to an 11 MB
-file and restored on another server), locked to one database user with an ACL selector, traversed in
-milliseconds, and still there after a restart. Remove FalkorDB and nothing runs: there is no fallback store.
+AI use: built with Claude Code as the coding assistant. The README's "AI use" section has the details.
+```
 
-We also report five things we learned about FalkorDB 6.0.2 while building it (an index-first query pattern that
-made our reads 12 to 150 times faster, an OPTIONAL MATCH pitfall, read-only ACL selectors, DUMP/RESTORE for
-graphs, and keeping same-named graphs apart across Redis databases).
+**What track are you submitting for?** (required)
 
-**How FalkorDB is used:** primary and only database. `codebook:population` (everyone's memory, read-only after
-setup) and `codebook:partner:<id>` (one graph per partner: learned link weights, style, diary). Cypher for every
-read and write; GRAPH.COPY for new partners and learning-curve snapshots; per-partner ACL users; DUMP/RESTORE
-for export and import.
+- Agent Memory and Coordination (Track 02).
+- Optional second track: Agents That Act on Connected Data (Track 01). Each clue is a decision made by multi-hop
+  Cypher over the graph, and a refusal shows the path to the bomb, so the claim is credible. Rule 5 allows
+  entering several tracks.
 
-**Tech stack:** FalkorDB 6.0.2, Python 3.12, Starlette, MCP (Python SDK), Typer; the Codenames AI Competition
-engine (MIT, vendored unmodified); GloVe and word2vec vectors for the competition's bot partners; Claude Code
-headless (`claude -p`) and Codex CLI as AI partners and clue-givers.
+**Repository** (required)
 
-**AI use (required disclosure):** Built with Claude Code (Claude Opus) as the coding assistant for research,
-code, tests, documentation, the pitch deck, the demo recording script and the demo video, whose narration is a
-synthetic voice (the open Kokoro text-to-speech model, each line checked against the script with Gemini
-speech-to-text). A Codex CLI adapter is included as an
-in-product partner and clue-giver; Codex did not write code for this project. Inside the product, Claude Haiku plays as a guesser and Claude Sonnet as a
-clue-giver through their command-line tools; they never get database access.
+```text
+[repo URL]
+```
 
-**Data:** everyone's memory is built at setup from the Small World of Words data (SWOW-EN18, downloaded by each
-user under CC BY-NC-ND 3.0) or ConceptNet 5.7 (CC BY-SA 4.0); the reported results used ConceptNet 5.7. No word
-data is committed to the repository.
+**Demo video** (required): YouTube, public or unlisted
 
-**Team:** Rubixx (Rajendra Sarpal)
+```text
+[video URL]
+```
+
+**Live demo or deployment** (optional): Codebook runs locally, and rule 10 accepts complete local setup
+instructions instead of a deployment, so point this field at them.
+
+```text
+[repo URL]#try-it
+```
+
+**How did you use FalkorDB in your project?** (required): Tell us what technical problems you solved using
+FalkorDB.
+
+```text
+FalkorDB is Codebook's only database. With it stopped, all 13 commands and the MCP tools exit with an error; there is no fallback store.
+
+The model: everyone's memory is one graph, codebook:population, with 39k (:Word) nodes and 497k weighted [:ASSOC] links. Every partner has their own graph key, codebook:partner:<id>, which holds learned link weights, a (:Partner) style node and a diary of (:Game)-[:HAS]->(:Turn)-[:GUESSED]->(:Word).
+
+Problems we solved with it:
+1. Separate memory per user: GRAPH.COPY gives a new partner a complete copy of everyone's memory in 0.7 s (497k links), so no query needs a tenant filter.
+2. Isolation: each partner gets a Redis ACL user locked to its own key. GRAPH.RO_QUERY counts as read-write key access, so read-only access to everyone's memory uses a selector, (~codebook:population +graph.ro_query). A contract test confirms that a partner's user gets NOPERM on another partner's key and on writes to everyone's memory.
+3. Deciding each clue: Cypher reads four kinds of link from each candidate clue to the board: direct, reverse, two-step chains and shared associates.
+4. Traceable safety: a path query finds the strongest chain of at most two links from a clue to the bomb, and code blocks the clue and shows the path (for example "Blocked GLOBE: globe -> round reaches the bomb").
+5. Learning: every graded guess MERGEs and re-weights links in that partner's graph (semantic memory). After each game the diary (episodic memory) is consolidated into the partner's style weights, which decide how clues are scored for that partner (procedural memory).
+6. Persistence and handoffs: memory survives restarts (the same replay fingerprint before and after), another AI uses it through MCP tools without database credentials, and DUMP/RESTORE moves one memory to another server as an 11 MB file that restores in 0.4 s.
+7. Learning curves: GRAPH.COPY snapshots after 5, 10 and 20 practice games.
+
+Performance: binding the indexed word first under UNWIND took direct-link reads from 3.1 s to 13 ms and two-step chains from 17.6 s to 117 ms on the 497k-link graph, with identical rows.
+```
+
+**Blog link** (optional; the best blog post wins AirPods 5): post `BLOG.md` on dev.to or Hashnode first.
+
+```text
+[blog URL]
+```
+
+## Part 2 · Feedback
+
+**What did you like about FalkorDB?** (required)
+
+```text
+Per-user memory became cheap. GRAPH.COPY cloned a 497k-link graph in 0.7 s, so every partner gets a full, independent graph key instead of a tenant ID in every query. One server holds all of them (15 graphs in our setup), and each can be locked to its own user with plain Redis ACLs.
+
+Because FalkorDB speaks the Redis protocol, the standard redis client, AOF persistence, ACL users and DUMP/RESTORE all just worked, and the Docker image ran with one command. Reads were fast enough to run four kinds of Cypher traversal over the whole board on every turn, live, and GRAPH.EXPLAIN made the planner's choices easy to check.
+```
+
+**What improvements would you like to see in FalkorDB?** (required)
+
+```text
+1. Index use under UNWIND. "UNWIND $words AS w MATCH (c)-[r]->(:Word {text: w})" scans every edge for each row instead of using the Word.text index. Binding the node first ("MATCH (t:Word) WHERE t.text = w WITH t ...") took our reads from 3.1 s to 13 ms and from 17.6 s to 117 ms. The planner could do this rewrite itself.
+2. OPTIONAL MATCH after an aggregating WITH silently returned no rows from the second OPTIONAL MATCH. We rewrote it as UNION ALL; a fix, or at least a warning, would help.
+3. GRAPH.RO_QUERY is declared as read-write key access, so Redis's read-only key pattern (%R~) can't grant read-only graph access. Declaring it read-only would make per-tenant ACLs simple.
+4. Moving a graph between servers: Redis COPY refuses graph keys, so we used DUMP/RESTORE. A documented, version-tolerant graph export and import would make that easier.
+5. Re-creating a graph in one Redis database aborted a write to a same-named graph in another database ("graph was deleted or replaced"). Graphs in different databases should be fully independent.
+```
