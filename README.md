@@ -279,7 +279,8 @@ What this says, plainly:
 ## AI use
 
 Built with Claude Code (Claude Opus) as the coding assistant: research, code, tests, documentation, the
-pitch deck and the demo recording script. Inside the product, Claude Haiku (guesser) and Claude Sonnet
+pitch deck, the demo recording script and the demo video, whose narration is a synthetic voice (the open
+Kokoro text-to-speech model). Inside the product, Claude Haiku (guesser) and Claude Sonnet
 (clue-giver) play through Claude Code's headless mode (`claude -p`), and a Codex CLI adapter is included as
 another in-product partner; Codex did not write code for this project. Neither AI gets database access.
 

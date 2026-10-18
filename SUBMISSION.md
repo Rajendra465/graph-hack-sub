@@ -9,7 +9,7 @@ memory to another AI. One memory per partner, each its own graph in FalkorDB.
 
 **Links**
 - Repository: [repo URL]
-- Demo video (2:19, captioned): [video URL]
+- Demo video (2:44, narrated and captioned): [video URL]
 - Pitch deck: [deck link]
 
 **Short description (≈60 words)**
@@ -54,7 +54,9 @@ engine (MIT, vendored unmodified); GloVe and word2vec vectors for the competitio
 headless (`claude -p`) and Codex CLI as AI partners and clue-givers.
 
 **AI use (required disclosure):** Built with Claude Code (Claude Opus) as the coding assistant for research,
-code, tests, documentation, the pitch deck and the demo recording script. A Codex CLI adapter is included as an
+code, tests, documentation, the pitch deck, the demo recording script and the demo video, whose narration is a
+synthetic voice (the open Kokoro text-to-speech model, each line checked against the script with Gemini
+speech-to-text). A Codex CLI adapter is included as an
 in-product partner and clue-giver; Codex did not write code for this project. Inside the product, Claude Haiku plays as a guesser and Claude Sonnet as a
 clue-giver through their command-line tools; they never get database access.
 
@@ -62,4 +64,4 @@ clue-giver through their command-line tools; they never get database access.
 user under CC BY-NC-ND 3.0) or ConceptNet 5.7 (CC BY-SA 4.0); the reported results used ConceptNet 5.7. No word
 data is committed to the repository.
 
-**Team:** [Team name]
+**Team:** Rubixx (Rajendra Sarpal)

@@ -1,4 +1,26 @@
-# Demo video (2:19)
+# Demo videos
+
+## The submitted video (2:44)
+
+A narrated, captioned video made in Remotion. Its app screens are real captures of the redesigned live view, and
+its results come from `results/runs/final-20261017-1941-v2/`. The narration is a synthetic voice (the open Kokoro
+text-to-speech model).
+
+| Time | Chapter |
+|---|---|
+| 0:00 | Same board, two memories: everyone's memory walks the bot into the bomb, its own memory wins |
+| 0:11 | The problem: AI agents forget the people they work with |
+| 0:24 | The game we built to test it: Codenames, with a bot, another AI or you as the partner |
+| 0:42 | How the memory works: everyone's memory in FalkorDB, then a copy per partner that learns |
+| 0:57 | Partner 1, a bot: every clue is a live Cypher query, the 3D memory graph, a blocked clue |
+| 1:16 | Partners 2 and 3: another AI uses the memory through MCP tools; you play and get your own |
+| 1:34 | Architecture: MCP server, command line and live view over one engine and one graph per partner |
+| 1:47 | Why FalkorDB: a graph per partner, copied in under a second, locked to its owner, one file to move |
+| 2:09 | Results: the word2vec bot's bomb hits fell from 32% to 21% on unseen boards; 3 of 4 promises kept |
+| 2:21 | Why it matters: coding assistants, support agents and tutors that remember each person |
+| 2:34 | Try it yourself: one command, four scenarios and a 60-second tour |
+
+## The recorded walkthrough (2:19)
 
 `demo/codebook-demo.mp4` is recorded from the live view by `scripts/record_demo.py`: real games on the
 unmodified engine, captioned, no narration. Every game in it uses a board and a set-up from the final run, so
