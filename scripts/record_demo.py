@@ -190,7 +190,7 @@ def main() -> None:
             marks[scene] = round(time.time() - t0, 1)
 
         mark("title")
-        page.goto(f"{BASE}/")
+        page.goto(f"{BASE}/?tab=queries")
         page.evaluate(CARD, ["Codebook", "An AI teammate that learns how you think, remembers it next session, "
                              "and can hand that memory to another AI. Every partner gets their own memory: "
                              "a graph in FalkorDB.", False])

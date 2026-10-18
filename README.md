@@ -15,11 +15,17 @@ Graph Hacks 2026, **Track 02: Agent Memory and Coordination**.
 > GloVe gained nothing significant, and the handover to another AI pointed the right way but wasn't significant on
 > 40 boards. Details and every game: [Results](#results).
 
-![The live view: a game against the word2vec bot with its own memory, and every Cypher statement FalkorDB ran](docs/img/live-view.png)
+![Board 6030 with the word2vec bot's own memory: the board, the clue, plain-English narration and the partner's memory in 3D](docs/img/live-view.png)
 
 | What this partner's memory holds | Same board, three memories, three different clues |
 |---|---|
 | ![word2vec's memory: style weights, reweighted links, favourite words](docs/img/partner-memory.png) | ![Board 6042: everyone's memory says SKY 2, word2vec's MIDDLE 1, the backwards thinker's PLACE 3](docs/img/compare-memories.png) |
+
+**The live view explains itself.** On a first visit it offers four one-click scenarios: the same board with two
+memories, another AI taking over, playing as the guesser yourself, and exploring a memory. There's also a 60-second
+tour. While a game plays, a narration line says what just happened in plain words. The partner's memory around each
+clue turns in 3D, from three read-only Cypher queries (`graph_clue_links`, `graph_chains`, `path_to`), and those
+queries appear in the Live Cypher tab with everything else.
 
 ---
 
