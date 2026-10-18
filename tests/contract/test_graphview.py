@@ -6,9 +6,10 @@ import pytest
 
 from codebook import keys
 from codebook.board import BoardView
-from codebook.graphview import clue_graph
+from codebook.graphview import GraphRequest, clue_graph
 from codebook.harness import board_for_seed
 from codebook.memory import Memory
+from codebook.web import LiveApp, LiveGame
 
 pytestmark = pytest.mark.contract
 KINDS = {"direct", "reverse", "chain", "bomb"}
@@ -93,3 +94,41 @@ def test_a_clue_on_the_board_is_refused(population):
     board = _board()
     with pytest.raises(ValueError):
         clue_graph(Memory(population), keys.POPULATION, board.words, board.roles, set(), board.words[0])
+
+
+def test_board_graph_uses_the_memorys_top_clue(population, test_settings):
+    g = LiveApp(test_settings).board_graph(GraphRequest(5000, "everyone", None))
+    assert g["seed"] == 5000
+    assert len([n for n in g["nodes"] if n["kind"] == "board"]) == 25
+    assert g["clue"] not in _board().words and any(n["kind"] == "clue" for n in g["nodes"])
+
+
+def test_board_graph_refuses_a_missing_memory(population, test_settings):
+    with pytest.raises(ValueError, match="no memory"):
+        LiveApp(test_settings).board_graph(GraphRequest(5000, "nobody-here", None))
+
+
+def test_game_graph_uses_the_board_as_it_stood_and_joins_the_live_feed(population, test_settings):
+    live = LiveApp(test_settings)
+    words, key = board_for_seed(5000)
+    board = BoardView.from_harness(words, key)
+    clue = _linked_clue(population, board)
+    game = LiveGame("live-test-1", "glove", "everyone", keys.POPULATION, 5000, "watch", False, "codebook", 0.0,
+                    words, key)
+    live.games[game.gid] = game
+    game.add({"kind": "clue", "turn": 1, "clue": clue})
+    game.add({"kind": "guess", "word": board.words[0], "role": board.roles[0]})
+    game.add({"kind": "clue", "turn": 2, "clue": clue})
+
+    def revealed(g: dict) -> set[str]:
+        return {n["id"] for n in g["nodes"] if n.get("revealed")}
+
+    first = live.game_graph(game.gid, 1)
+    latest = live.game_graph(game.gid, None)
+    assert first["turn"] == 1 and revealed(first) == set()
+    assert latest["turn"] == 2 and revealed(latest) == {board.words[0]}
+    assert any(e["kind"] == "query" and e["name"].startswith("graph_") for e in game.since(0))
+    with pytest.raises(LookupError):
+        live.game_graph(game.gid, 9)
+    with pytest.raises(LookupError):
+        live.game_graph("no-such-game", None)

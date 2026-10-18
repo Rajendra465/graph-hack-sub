@@ -21,13 +21,15 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.requests import Request
 from starlette.responses import FileResponse, JSONResponse
-from starlette.routing import Route
+from starlette.routing import Mount, Route
+from starlette.staticfiles import StaticFiles
 
 from codebook import config, keys
 from codebook import cypher as C
 from codebook.board import BoardView
 from codebook.db import Db, DbError, QueryEvent
 from codebook.evaluate import benchmark_game_id
+from codebook.graphview import GraphRequest, clue_graph, parse_graph_request, parse_turn
 from codebook.harness import board_for_seed, engine, play
 from codebook.memory import Memory
 from codebook.partners import ALL as PARTNER_IDS
@@ -287,6 +289,44 @@ class LiveApp:
             out["by_memory"][mem] = [o.as_dict() for o in options]
         return out
 
+    # ---------- the 3D memory graph ----------
+    def game_graph(self, gid: str, turn: int | None) -> dict:
+        """The memory around one of a game's clues, with the board as it stood when the clue was given."""
+        game = self.games.get(gid)
+        if game is None:
+            raise LookupError("no such game")
+        events = game.since(0)
+        clues = [e for e in events if e.get("kind") == "clue" and (turn is None or e.get("turn") == turn)]
+        if not clues:
+            raise LookupError("no clue yet" if turn is None else f"no clue for turn {turn}")
+        clue = clues[-1]
+        revealed = {e["word"] for e in events if e.get("kind") == "guess" and e["i"] < clue["i"]}
+        board = BoardView.from_harness(game.words, game.key)
+        previous = getattr(_current, "game", None)
+        _current.game = game  # the graph's queries join this game's Live Cypher feed
+        try:
+            graph = clue_graph(self.memory, game.read_key, board.words, board.roles, revealed, clue["clue"])
+        finally:
+            _current.game = previous
+        return {**graph, "turn": clue["turn"]}
+
+    def board_graph(self, req: GraphRequest) -> dict:
+        """The memory around a clue on a seeded board: the given clue, or this memory's top suggestion."""
+        words, key = board_for_seed(req.seed)
+        board = BoardView.from_harness(words, key)
+        read_key = keys.POPULATION if req.memory_of == "everyone" else keys.partner_key(req.memory_of)
+        if not self.db.exists(read_key):
+            raise ValueError(f"no memory for {req.memory_of!r}")
+        clue = req.clue or self._top_clue(read_key, board, req.seed)
+        return {**clue_graph(self.memory, read_key, board.words, board.roles, set(), clue), "seed": req.seed}
+
+    def _top_clue(self, read_key: str, board: BoardView, seed: int) -> str:
+        model = self.memory.model(read_key)
+        options = plan(board, self.memory.features(read_key, board, model).rows, model, seed=seed)
+        if not options:
+            raise LookupError("this memory has no clue for this board")
+        return options[0].clue
+
 
 def create_app(settings: config.Settings | None = None) -> Starlette:
     live = LiveApp(settings or config.load())
@@ -351,6 +391,23 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
         except (DbError, ValueError) as exc:
             return ok({"error": str(exc)}, 400)
 
+    def graph_response(build):
+        try:
+            return ok(build())
+        except DbError:
+            return ok({"error": "the memory database is unavailable"}, 503)
+        except LookupError as exc:
+            return ok({"error": str(exc)}, 404)
+        except ValueError as exc:
+            return ok({"error": str(exc)}, 400)
+
+    def game_graph(request: Request):
+        return graph_response(lambda: live.game_graph(request.path_params["gid"],
+                                                      parse_turn(request.query_params.get("turn"))))
+
+    def board_graph(request: Request):
+        return graph_response(lambda: live.board_graph(parse_graph_request(request.query_params)))
+
     routes = [
         Route("/", index),
         Route("/api/partners", partners),
@@ -360,6 +417,9 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
         Route("/api/game/{gid}/guess", guess, methods=["POST"]),
         Route("/api/cypher", cypher_texts),
         Route("/api/suggest", suggest),
+        Route("/api/game/{gid}/graph", game_graph),
+        Route("/api/graph", board_graph),
+        Mount("/static", app=StaticFiles(directory=STATIC), name="static"),
     ]
     host, port = live.settings.ui_host, live.settings.ui_port
     allowed_hosts = sorted({"127.0.0.1", "localhost", host})
