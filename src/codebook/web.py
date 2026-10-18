@@ -482,7 +482,10 @@ def create_app(settings: config.Settings | None = None) -> Starlette:
         async def dispatch(self, request, call_next):
             if request.method == "POST":
                 origin = request.headers.get("origin")
-                if origin and origin not in origins:
+                # A public deployment may answer on several addresses (Cloud Run gives two): its own page
+                # is whichever one the request was sent to.
+                same_address = bool(public) and origin == f"https://{request.headers.get('host', '')}"
+                if origin and origin not in origins and not same_address:
                     return JSONResponse({"error": "cross-origin request refused"}, status_code=403)
                 if not request.headers.get("content-type", "").startswith("application/json"):
                     return JSONResponse({"error": "expected application/json"}, status_code=415)

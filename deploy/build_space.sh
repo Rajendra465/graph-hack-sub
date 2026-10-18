@@ -10,6 +10,8 @@ rm -rf "$out"
 mkdir -p "$out/app/data/vectors" "$out/falkordb"
 cp deploy/space/Dockerfile deploy/space/start.sh deploy/space/README.md "$out/"
 sed -i 's/\r$//' "$out/start.sh"  # a Windows checkout may add CRs, and bash in the container would choke
+# `gcloud run deploy --source` skips whatever .gitignore lists, and app/.gitignore lists data/: upload it all.
+echo "# Upload everything: the image needs app/data and app/results, which app/.gitignore lists." > "$out/.gcloudignore"
 git archive HEAD | tar -x -C "$out/app"
 cp data/vectors/glove.npz data/vectors/w2v.npz "$out/app/data/vectors/"
 

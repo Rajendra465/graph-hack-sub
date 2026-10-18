@@ -63,6 +63,17 @@ def test_the_public_demo_takes_writes_only_from_its_own_page(public_client):
     assert own.status_code == 400 and "public demo" in own.json()["error"]  # past the origin check
 
 
+def test_the_public_demo_takes_writes_from_whichever_address_serves_it(population, test_settings):
+    run_host = "codebook-123.asia-south1.run.app"  # a second address for the same deployment
+    app = create_app(dataclasses.replace(test_settings, public_host=PUBLIC_HOST))
+    served = TestClient(app, base_url=f"https://{run_host}")
+    body = {"partner": "glove", "learn": True, "seed": 5000}
+    own = served.post("/api/game", json=body, headers={"origin": f"https://{run_host}"})
+    assert own.status_code == 400 and "public demo" in own.json()["error"]  # past the origin check
+    other = served.post("/api/game", json=body, headers={"origin": "https://evil.example"})
+    assert other.status_code == 403
+
+
 @pytest.mark.parametrize("body", [
     {"partner": "glove", "learn": True},                   # would change a benchmark memory
     {"partner": "claude"},                                 # an AI guesser calls a model every turn
