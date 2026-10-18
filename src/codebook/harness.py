@@ -136,15 +136,19 @@ def _game_classes():
 
 
 def board_for_seed(seed: int) -> tuple[list[str], list[str]]:
-    """The board and key the engine deals for this seed (same calls, same order as Game)."""
+    """The board and key the engine deals for this seed (same calls, same order as Game).
+
+    A private generator seeded the same way makes the same shuffles without touching the global `random`
+    that the engine's games deal from, so the live view can deal a board while a game is starting.
+    """
     import random  # noqa: PLC0415
 
-    random.seed(int(seed))
+    rng = random.Random(int(seed))
     words = (ENGINE_DIR / "game_wordpool.txt").read_text().splitlines()
-    random.shuffle(words)
+    rng.shuffle(words)
     board = words[:25]
     key = ["Red"] * 8 + ["Blue"] * 7 + ["Civilian"] * 9 + ["Assassin"]
-    random.shuffle(key)
+    rng.shuffle(key)
     return board, key
 
 
