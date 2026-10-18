@@ -16,3 +16,5 @@ results/*.log
 ruvector.db
 *.codebook
 demo/
+# the assembled Hugging Face Space (deploy/build_space.sh)
+deploy/out/
