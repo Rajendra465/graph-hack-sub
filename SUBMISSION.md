@@ -45,11 +45,10 @@ https://github.com/Rajendra465/graph-hack-sub
 [video URL]
 ```
 
-**Live demo or deployment** (optional): Codebook runs locally, and rule 10 accepts complete local setup
-instructions instead of a deployment, so point this field at them.
+**Live demo or deployment** (optional): the live view on Google Cloud Run, with FalkorDB in the same container.
 
 ```text
-https://github.com/Rajendra465/graph-hack-sub#try-it
+https://codebook-755276882523.asia-south1.run.app
 ```
 
 **How did you use FalkorDB in your project?** (required): Tell us what technical problems you solved using

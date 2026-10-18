@@ -10,6 +10,9 @@ anything that speaks MCP) through tools, never through database credentials.
 
 Graph Hacks 2026, **Track 02: Agent Memory and Coordination**.
 
+**Try it live: https://codebook-755276882523.asia-south1.run.app** (the live view on Google Cloud Run, with
+FalkorDB in the same container; see [Deployment](#deployment)).
+
 > **Results: 3 of 4 pre-registered promises kept.** On 200 boards it never saw, a partner's own memory beat
 > everyone's memory and the wrong partner's memory for three of four partners (word2vec bot: bomb hits 32% → 21%).
 > GloVe gained nothing significant, and the handover to another AI pointed the right way but wasn't significant on
@@ -204,6 +207,27 @@ uv run codebook ui                            # live view on http://127.0.0.1:78
 **Use it from any agent (MCP).** `claude mcp add codebook -- uv --directory <repo> run codebook mcp`
 gives an agent six tools: `list_partners`, `suggest_clues`, `check_clue`, `record_turn`, `end_game`,
 `partner_memory`. The agent never sees a database address or password.
+
+## Deployment
+
+The live demo is one container on Google Cloud Run, built from [`deploy/`](deploy/):
+
+- FalkorDB 6.0.2 runs inside it, bound to localhost with a new random password at each start, and loads a
+  snapshot of the memory graphs behind the results.
+- The live view runs in public mode (`CODEBOOK_PUBLIC_HOST`): only the "you" memory learns (everyone who plays
+  shares it), AI partners and live AI clue-givers are refused because the container has no AI keys, and the
+  logged games still replay move for move. A restart resets everything to the snapshot.
+
+```bash
+bash deploy/build_space.sh   # deploy/out/space: the repo at HEAD, the bots' vectors, the graph snapshot
+gcloud run deploy codebook --source deploy/out/space --region asia-south1 --allow-unauthenticated \
+  --port 7860 --memory 2Gi --min-instances 1 --max-instances 1 --no-cpu-throttling \
+  --set-env-vars CODEBOOK_PUBLIC_HOST=<the service's host name>
+```
+
+Games live in the app's memory, so the service keeps exactly one instance, with its CPU always on so that games
+keep playing between the page's polls. The same folder also runs as a Hugging Face Docker Space
+(`deploy/space/README.md` is its card).
 
 ## Evaluation
 

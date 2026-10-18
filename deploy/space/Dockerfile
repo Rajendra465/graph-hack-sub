@@ -1,4 +1,5 @@
-# Codebook's live view as a Hugging Face Space: FalkorDB 6.0.2 and the app in one container.
+# Codebook's live view in one container, FalkorDB 6.0.2 and the app, for Cloud Run (the live demo) or a
+# Hugging Face Docker Space. Set CODEBOOK_PUBLIC_HOST to the deployment's host name.
 # Built from deploy/out/space/, which deploy/build_space.sh assembles: app/ is the repo at HEAD plus the
 # bots' word vectors, and falkordb/dump.rdb is a snapshot of the memories behind the published results.
 FROM falkordb/falkordb:6.0.2
@@ -27,7 +28,7 @@ ENV CODEBOOK_HOME=/home/user/app \
     CODEBOOK_UI_HOST=0.0.0.0 \
     CODEBOOK_UI_PORT=7860 \
     CODEBOOK_DB_PORT=6390 \
-    CODEBOOK_PUBLIC_HOST=sarpal465-codebook.hf.space \
+    CODEBOOK_PUBLIC_HOST=codebook-755276882523.asia-south1.run.app \
     CODEBOOK_MAX_GAMES=16 \
     CODEBOOK_HUMAN_WAIT_S=120
 EXPOSE 7860
