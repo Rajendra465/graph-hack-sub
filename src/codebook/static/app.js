@@ -16,11 +16,12 @@
 
   const CB = (window.CB = {
     $, num, esc, anim, reduced, POLL_MS,
-    game: null, since: 0, timer: null, polling: false, failures: 0, humanGame: false,
+    game: null, since: 0, timer: null, polling: false, failures: 0, humanGame: false, over: false,
     partnersInfo: [], queries: [], roles: {},
     hooks: { start: [], end: [] },
   });
   CB.on = (name, fn) => CB.hooks[name].push(fn);
+  CB.hideKey = () => CB.humanGame && !CB.over;  // a human guesser must not see the key until the game ends
   const emit = (name, ...args) => CB.hooks[name].forEach((fn) => {
     try { fn(...args); } catch (e) { console.error(e); }
   });
@@ -126,16 +127,21 @@
   };
 
   // ---------- a game ----------
+  let startSeq = 0;
   CB.startGame = async function startGame(body) {
+    const seq = ++startSeq;
     CB.resetGameView();
     CB.game = null;
     const j = await CB.post('/api/game', body);
+    if (seq !== startSeq) return null;  // a newer start replaced this one while its request was in flight
     CB.game = j.game;
     CB.since = 0;
     CB.failures = 0;
     CB.humanGame = body.partner === 'you';
+    CB.over = false;
     CB.renderBoard(j.words, j.key, CB.humanGame);
     $('gameinfo').innerHTML = CB.gameInfo(body.seed, body.partner, j.read_key, j.benchmark_game, j.replay);
+    clearInterval(CB.timer);
     CB.timer = setInterval(CB.poll, POLL_MS);
     CB.say(CB.humanGame ? 'Codebook is choosing your first clue from your own memory…'
       : 'Codebook is reading this partner\'s memory in FalkorDB: four kinds of links for every candidate clue…');
@@ -150,11 +156,13 @@
       partner: $('partner').value, memory: $('memory').value, seed: +$('seed').value, clue_giver: $('giver').value,
       learn: $('learn').checked, replay: $('replay').checked, delay: +$('delay').value,
     };
+    $('start').disabled = true;  // one start at a time: a double click must not start two games
     try {
-      await CB.startGame(body);
-      if (CB.closeDrawer) CB.closeDrawer();
+      if ((await CB.startGame(body)) && CB.closeDrawer) CB.closeDrawer();
     } catch (e) {
       CB.showError(e.message);
+    } finally {
+      $('start').disabled = false;
     }
   }
 
@@ -184,6 +192,8 @@
   };
 
   CB.finish = function finish(j) {
+    if (CB.over) return;  // once per game, however many polls see the end
+    CB.over = true;
     clearInterval(CB.timer);
     const text = CB.endStatus(j);
     $('status').textContent = text;
@@ -252,7 +262,7 @@
   }
 
   function onBlock(ev) {
-    const path = ev.path && ev.path.length ? ev.path : null;
+    const path = !CB.hideKey() && ev.path && ev.path.length ? ev.path : null;  // a path ends on the bomb
     const clue = String(ev.clue).toUpperCase();
     $('blocks').insertAdjacentHTML('afterbegin', `<div class="block">Blocked <b>${esc(clue)}</b>${ev.proposed_by !== 'codebook' ? ` (proposed by ${esc(ev.proposed_by)})` : ''}: ${path ? `<b>${esc(path.join(' → '))}</b> reaches the bomb, strength ${num(ev.strength)}` : `the model gives the bomb ${pct(ev.p_assassin)}`}</div>`);
     while ($('blocks').children.length > MAX_BLOCKS_SHOWN) $('blocks').lastElementChild.remove();

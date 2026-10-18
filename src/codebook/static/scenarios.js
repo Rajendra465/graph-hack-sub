@@ -51,10 +51,12 @@
 
   async function run(body) {
     cancelSteps();
+    const mine = current;
     try {
-      return await CB.startGame(body);
+      const j = await CB.startGame(body);
+      return mine === current ? j : null;  // something else started while this one was starting
     } catch (e) {
-      CB.showError(e.message);
+      if (mine === current) CB.showError(e.message);
       return null;
     }
   }
@@ -99,6 +101,7 @@
       setControls({ partner: 'w2v', memory: 'own', seed: BOARD, giver: 'codebook' });
       CB.resetGameView();
       CB.game = null;
+      CB.humanGame = false;
       $('cmpmems').value = 'everyone,w2v,glove';
       CB.showTab('compare');
       CB.say('Exploring the word2vec bot\'s memory around board 6030: the clue it would give, and the links behind it. Drag the graph to turn it.');
@@ -164,6 +167,7 @@
     if (q.get('game')) {
       CB.game = q.get('game');
       CB.since = 0;
+      CB.over = false;
       const j = await CB.api(`/api/game/${encodeURIComponent(CB.game)}?since=0`);
       $('partner').value = j.partner;
       $('seed').value = j.seed;

@@ -25,7 +25,7 @@
       painting = false;
       const total = CB.queries.reduce((s, x) => s + num(x.ms), 0);
       $('qsum').textContent = `${CB.queries.length} queries this game · ${total.toFixed(0)} ms in FalkorDB`;
-      $('qlist').innerHTML = CB.queries.slice(0, SHOWN_QUERIES).map((x) => `<details class="q"><summary><span class="n">${esc(x.name)}</span><span class="k">${esc(x.key)} · ${x.ro ? 'GRAPH.RO_QUERY' : 'GRAPH.QUERY'}</span><span>${num(x.rows)} rows</span><span>${num(x.ms)} ms</span></summary><pre>${esc(x.cypher)}</pre>${x.params ? `<pre class="p">${esc(x.params)}</pre>` : ''}</details>`).join('');
+      $('qlist').innerHTML = CB.queries.slice(0, SHOWN_QUERIES).map((x) => `<details class="q"><summary><span class="n">${esc(x.name)}</span><span class="k">${esc(x.key)} · ${x.ro ? 'GRAPH.RO_QUERY' : 'GRAPH.QUERY'}</span><span>${num(x.rows)} rows</span><span>${num(x.ms)} ms</span></summary><pre>${esc(x.cypher)}</pre>${x.params && !CB.hideKey() ? `<pre class="p">${esc(x.params)}</pre>` : ''}</details>`).join('');
       if (slideFirst) anim((g) => g.from('#qlist .q:first-child', { x: 24, opacity: 0, duration: 0.3 }));
       slideFirst = false;
     });
@@ -55,6 +55,10 @@
   };
 
   CB.compare = async function compare() {
+    if (CB.hideKey()) {
+      $('cmp').innerHTML = '<div class="muted">Hidden while you play: each memory\'s clues would show which words are yours. It comes back when the game ends.</div>';
+      return;
+    }
     const typed = ($('cmpmems').value || '').split(',').map((x) => x.trim()).filter(Boolean);
     const mems = typed.length ? typed : ['everyone', ...CB.partnersInfo.map((p) => p.id).filter((id) => !/-at\d+$/.test(id))].slice(0, 4);
     try {
@@ -91,6 +95,7 @@
   CB.on('end', () => {
     const p = $('partner').value;
     if (p !== 'you') CB.showMemory($('memory').value === 'own' ? p : $('memory').value);
+    if (CB.humanGame) CB.compare();  // hidden while the human played
     CB.loadPartners().catch(() => {});  // a learning game may have added a memory; the page keeps working without it
   });
 })();
