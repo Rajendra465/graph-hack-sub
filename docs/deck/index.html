@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Codebook pitch deck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Nunito+Sans:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg0: #070A16; --bg1: #0E1430; --bg2: #151A2E; --panel: rgba(21,26,46,0.92);
+  --ink: #F4EFE4; --muted: #9AA3C7; --line: rgba(244,239,228,0.16);
+  --blue: #7EA2F2; --blue-deep: #2F5BC2; --orange: #F28C38; --red: #FF4D5E; --green: #3DDC97;
+  --display: "Rubik", Arial, sans-serif; --body: "Nunito Sans", Arial, sans-serif;
+  --mono: "JetBrains Mono", Consolas, monospace;
+}
+@page { size: 1920px 1080px; margin: 0; }
+* { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html, body { margin: 0; padding: 0; background: var(--bg0); color: var(--ink); font-family: var(--body); }
+@media screen { body { background: #03050c; zoom: var(--fit, 1); } .slide { margin: 0 auto 32px; } }
+.slide {
+  position: relative; width: 1920px; height: 1080px; overflow: hidden; padding: 92px 120px 120px;
+  background: radial-gradient(1400px 900px at 90% -12%, #16204a 0%, rgba(14,20,48,0.55) 38%, var(--bg0) 72%);
+  break-after: page; page-break-after: always;
+}
+.slide:last-child { break-after: auto; page-break-after: auto; }
+.label { display: flex; align-items: center; gap: 18px; font: 700 24px/1 var(--display); letter-spacing: .2em;
+  text-transform: uppercase; color: var(--blue); }
+.label::before { content: ""; width: 44px; height: 3px; border-radius: 2px; background: var(--blue); }
+h1 { margin: 0; font: 900 168px/.92 var(--display); letter-spacing: -.02em; }
+h2 { margin: 30px 0 0; max-width: 1640px; font: 800 74px/1.07 var(--display); letter-spacing: -.01em; }
+p { margin: 0; font-size: 38px; line-height: 1.36; font-weight: 600; }
+b { font-weight: 800; }
+.muted { color: var(--muted); }
+.blue { color: var(--blue); } .green { color: var(--green); } .red { color: var(--red); } .orange { color: var(--orange); }
+.mono { font-family: var(--mono); }
+a { color: inherit; text-decoration: none; }
+.footer { position: absolute; left: 120px; right: 120px; bottom: 44px; display: flex; justify-content: space-between;
+  font: 700 22px/1 var(--body); letter-spacing: .04em; color: var(--muted); }
+.tag { display: inline-block; padding: 9px 18px; border: 1.5px solid var(--line); border-radius: 999px;
+  font: 700 20px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.card { background: var(--panel); border: 1.5px solid var(--line); border-radius: 28px; padding: 38px 44px; }
+.icon { flex: none; display: grid; place-items: center; width: 66px; height: 66px; border-radius: 50%; }
+.icon svg { width: 34px; height: 34px; }
+.icon.no { background: rgba(255,77,94,.16); color: var(--red); }
+.icon.yes { background: rgba(61,220,151,.16); color: var(--green); }
+.shot { display: block; width: 100%; border-radius: 18px; border: 1.5px solid var(--line); }
+.cap { margin: 0 0 12px; font: 700 24px/1.2 var(--body); color: var(--muted); }
+
+/* 1 · title */
+.lead { margin-top: 34px; font: 700 66px/1.16 var(--display); color: var(--ink); }
+.who { margin-top: 70px; font: 700 36px/1 var(--body); color: var(--muted); }
+.links { margin-top: 44px; display: grid; gap: 22px; }
+.links div { display: flex; align-items: baseline; gap: 28px; }
+.links .k { width: 190px; font: 700 22px/1 var(--display); letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+.links a { font: 700 36px/1 var(--mono); color: var(--blue); }
+
+/* 2 · problem */
+.rows { margin-top: 64px; display: grid; gap: 34px; }
+.row { display: flex; align-items: center; gap: 30px; font: 700 46px/1.2 var(--body); }
+.contrast { margin-top: 64px; display: flex; align-items: center; gap: 30px; max-width: 1680px; }
+.contrast p { font-size: 40px; }
+
+/* 3 · question */
+.question { margin-top: 110px; max-width: 1640px; font: 800 96px/1.1 var(--display); letter-spacing: -.01em; }
+.question-sub { margin-top: 70px; max-width: 1400px; font-size: 40px; color: var(--muted); }
+
+/* 4 · the test */
+.two { display: grid; grid-template-columns: 820px 1fr; gap: 70px; margin-top: 44px; }
+.steps { display: grid; gap: 30px; }
+.step { display: flex; gap: 24px; align-items: flex-start; }
+.num { flex: none; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center;
+  background: rgba(126,162,242,.16); color: var(--blue); font: 800 30px/1 var(--display); }
+.step p { font-size: 36px; }
+.punch { margin-top: 42px; font-size: 38px; color: var(--green); font-weight: 700; }
+.clue { display: inline-flex; align-items: center; gap: 22px; margin-bottom: 22px; padding: 14px 26px;
+  border-radius: 999px; background: var(--panel); border: 1.5px solid var(--line); }
+.clue .k { font: 700 20px/1 var(--display); letter-spacing: .18em; color: var(--muted); }
+.clue .v { font: 700 38px/1 var(--mono); }
+.board { display: grid; grid-template-columns: repeat(5, 150px); gap: 12px; }
+.c { height: 82px; border-radius: 12px; display: grid; place-items: center; font: 700 22px/1 var(--display);
+  letter-spacing: .04em; border: 2px solid transparent; }
+.c.o { background: var(--blue-deep); color: var(--ink); }
+.c.t { background: rgba(242,140,56,.17); border-color: rgba(242,140,56,.6); color: #F7C9A0; }
+.c.n { background: #1b2137; border-color: var(--line); color: var(--muted); }
+.c.b { background: #000; border-color: var(--red); color: var(--red); }
+.c.aim { outline: 4px solid var(--green); outline-offset: 3px; }
+.legend { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 14px 26px; font: 700 22px/1 var(--body); color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 10px; }
+.legend i { display: inline-block; width: 22px; height: 22px; border-radius: 5px; }
+.under { margin-top: 26px; display: flex; justify-content: flex-end; width: 798px; }
+
+/* 5 · the idea */
+.idea { display: grid; grid-template-columns: 860px 1fr; gap: 60px; margin-top: 50px; align-items: start; }
+.bullets { display: grid; gap: 34px; }
+.bullets p { font-size: 38px; }
+.dot { display: inline-block; width: 14px; height: 14px; margin-right: 18px; border-radius: 50%; background: var(--blue);
+  transform: translateY(-6px); }
+.diagram { display: grid; justify-items: center; gap: 0; }
+.box { border-radius: 24px; border: 2px solid var(--blue); background: var(--panel); padding: 26px 34px; text-align: center; }
+.box .t { font: 800 34px/1.15 var(--display); }
+.box .s { margin-top: 8px; font: 700 24px/1.2 var(--body); color: var(--muted); }
+.arrow { height: 96px; display: grid; place-items: center; font: 700 26px/1 var(--mono); color: var(--green); position: relative; }
+.arrow::before { content: ""; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 3px; background: var(--green); opacity: .5; }
+.arrow span { position: relative; padding: 6px 14px; background: var(--bg0); border-radius: 8px; }
+.copies { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 100%; }
+.copies .box { border-color: var(--green); padding: 22px 14px; }
+.copies .t { font-size: 30px; }
+
+/* 6 · a turn */
+.turn { display: grid; grid-template-columns: 700px 1fr; gap: 60px; margin-top: 50px; }
+.tstep { display: grid; grid-template-columns: 150px 1fr; gap: 22px; align-items: baseline; padding: 22px 0;
+  border-bottom: 1.5px solid var(--line); }
+.tstep:last-child { border-bottom: 0; }
+.tstep .k { font: 800 36px/1 var(--display); }
+.tstep p { font-size: 34px; line-height: 1.3; }
+
+/* 7 · architecture */
+.arch { margin-top: 44px; display: grid; gap: 0; }
+.doors { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.door { padding: 26px 30px; border-radius: 22px; background: var(--panel); border: 1.5px solid var(--line); }
+.door .t { font: 800 34px/1.1 var(--display); }
+.door .s { margin-top: 10px; font: 700 26px/1.25 var(--body); color: var(--muted); }
+.down { height: 58px; display: grid; place-items: center; color: var(--muted); font: 800 34px/1 var(--display); }
+.engine { padding: 26px 34px; border-radius: 22px; background: var(--panel); border: 2px solid var(--blue);
+  display: flex; align-items: baseline; gap: 34px; }
+.engine .t { font: 800 36px/1 var(--display); }
+.engine .s { font: 700 30px/1.2 var(--body); color: var(--muted); }
+.falkor { padding: 26px 34px 30px; border-radius: 22px; border: 2px solid var(--green); background: rgba(61,220,151,.06); }
+.falkor .t { font: 800 36px/1 var(--display); color: var(--green); }
+.keys { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+.key { padding: 18px 24px; border-radius: 16px; background: var(--panel); border: 1.5px solid var(--line); }
+.key .m { font: 700 28px/1.2 var(--mono); }
+.key .s { margin-top: 8px; font: 700 26px/1.25 var(--body); color: var(--muted); }
+
+/* 8 · why falkordb */
+.grid6 { margin-top: 50px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+.tile { padding: 30px 34px; border-radius: 24px; background: var(--panel); border: 1.5px solid var(--line); min-height: 210px; }
+.tile .big { font: 800 50px/1.05 var(--display); color: var(--blue); }
+.tile p { margin-top: 14px; font-size: 32px; line-height: 1.28; }
+.banner { margin-top: 30px; padding: 26px 34px; border-radius: 22px; border: 2px solid var(--red);
+  background: rgba(255,77,94,.08); font: 700 36px/1.25 var(--body); }
+
+/* 9 · results */
+.results { display: grid; grid-template-columns: 780px 1fr; gap: 60px; margin-top: 44px; }
+.stat { padding: 28px 34px; border-radius: 24px; background: var(--panel); border: 1.5px solid var(--line); }
+.stat + .stat { margin-top: 24px; }
+.stat .k { font: 700 22px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.stat .v { margin-top: 14px; font: 800 84px/1 var(--display); }
+.stat .v .arrowr { color: var(--muted); font-weight: 700; margin: 0 14px; }
+.stat p { margin-top: 12px; font-size: 28px; line-height: 1.3; color: var(--muted); }
+.chart-title { font: 800 34px/1.15 var(--display); }
+.chart-sub { margin-top: 8px; font: 700 26px/1.2 var(--body); color: var(--muted); }
+.chart { margin-top: 10px; }
+.chart text { font-family: var(--body); font-weight: 700; }
+.honest { margin-top: 34px; font-size: 32px; line-height: 1.32; color: var(--muted); }
+
+/* 10 · coordination */
+.coord .intro { margin-top: 30px; max-width: 1680px; font-size: 36px; }
+.pair { margin-top: 44px; display: grid; grid-template-columns: 720px 720px; justify-content: space-between; }
+
+/* 11 · beyond */
+.uses { margin-top: 70px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+.use { padding: 40px 40px 36px; border-radius: 26px; background: var(--panel); border: 1.5px solid var(--line); }
+.use .t { font: 800 44px/1.1 var(--display); }
+.use p { margin-top: 18px; font-size: 36px; }
+.use .chip { margin-top: 30px; display: inline-block; padding: 10px 18px; border-radius: 999px; border: 2px solid var(--green);
+  color: var(--green); font: 700 24px/1 var(--body); }
+.foot-tag { margin-top: 44px; }
+
+/* 12 · try it */
+.try { margin-top: 40px; display: grid; gap: 18px; }
+.code { margin-top: 36px; padding: 30px 38px; border-radius: 22px; background: #04060e; border: 1.5px solid var(--line);
+  font: 500 29px/1.6 var(--mono); color: var(--ink); white-space: pre; }
+.code .c2 { color: var(--muted); }
+.limits { margin-top: 32px; max-width: 1680px; font-size: 30px; line-height: 1.34; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<!-- 1 · title -->
+<section class="slide" aria-label="Slide 1: Codebook">
+  <div class="label">Graph Hacks 2026 · Track 02 · Agent Memory and Coordination</div>
+  <h1 style="margin-top:150px">Codebook</h1>
+  <div class="lead">An AI teammate that remembers<br>how each partner thinks.</div>
+  <div class="who">Team Rubixx · Rajendra Sarpal</div>
+  <div class="links">
+    <div><span class="k">Live demo</span><a href="https://codebook-755276882523.asia-south1.run.app">codebook-755276882523.asia-south1.run.app</a></div>
+    <div><span class="k">Code</span><a href="https://github.com/Rajendra465/graph-hack-sub">github.com/Rajendra465/graph-hack-sub</a></div>
+  </div>
+  <div class="footer"><span>Every memory lives in FalkorDB</span><span>01 / 12</span></div>
+</section>
+
+<!-- 2 · problem -->
+<section class="slide" aria-label="Slide 2: The problem">
+  <div class="label">01 · The problem</div>
+  <h2>AI assistants forget the people they work with.</h2>
+  <div class="rows">
+    <div class="row"><span class="icon no"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>Every session starts from zero.</div>
+    <div class="row"><span class="icon no"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>You get the same answers as everyone else.</div>
+    <div class="row"><span class="icon no"><svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg></span>Hand work to another agent, and what it learned about you is lost.</div>
+  </div>
+  <div class="card contrast">
+    <span class="icon yes"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <p>People don't work that way: good partners build a shorthand. Say <b>ocean</b>, and they think <b class="green">wave</b>, not <b>bank</b>.</p>
+  </div>
+  <div class="footer"><span>Codebook · Graph Hacks 2026</span><span>02 / 12</span></div>
+</section>
+
+<!-- 3 · question -->
+<section class="slide" aria-label="Slide 3: Our question">
+  <div class="label">02 · Our question</div>
+  <div class="question">Can an agent keep a <span class="blue">separate memory of each person</span> it works with, and does that memory <span class="green">measurably help</span>?</div>
+  <p class="question-sub">To measure it, we needed a task where knowing your partner can be scored. A word game is exactly that.</p>
+  <div class="footer"><span>Codebook · Graph Hacks 2026</span><span>03 / 12</span></div>
+</section>
+
+<!-- 4 · the test -->
+<section class="slide" aria-label="Slide 4: The test, Codenames">
+  <div class="label">03 · The test</div>
+  <h2>Codenames in 20 seconds</h2>
+  <div class="two">
+    <div>
+      <div class="steps">
+        <div class="step"><span class="num">1</span><p>25 word cards. Our AI, the <b>clue-giver</b>, knows which are ours.</p></div>
+        <div class="step"><span class="num">2</span><p>It says one word and a number: <b class="mono">OCEAN · 2</b>.</p></div>
+        <div class="step"><span class="num">3</span><p>Its <b>partner</b> sees only the words, and guesses.</p></div>
+        <div class="step"><span class="num">4</span><p>One card is <b class="red">the bomb</b>. Touch it, and you lose.</p></div>
+      </div>
+      <p class="punch">Good clues depend on how this partner links words: that is what the memory learns.</p>
+    </div>
+    <div>
+      <div class="clue"><span class="k">CLUE</span><span class="v">OCEAN · 2</span></div>
+      <div class="board">
+        <div class="c o aim">WAVE</div><div class="c t">PIANO</div><div class="c n">ROBOT</div><div class="c o">MOON</div><div class="c t">CASTLE</div>
+        <div class="c n">APPLE</div><div class="c o aim">SHELL</div><div class="c t">GLASS</div><div class="c b">TORCH</div><div class="c o">TRAIN</div>
+        <div class="c o">LION</div><div class="c t">PAPER</div><div class="c n">FIRE</div><div class="c o">KEY</div><div class="c n">BOOK</div>
+        <div class="c t">RING</div><div class="c o">SNOW</div><div class="c n">BRIDGE</div><div class="c t">FOREST</div><div class="c n">MASK</div>
+        <div class="c o">CLOCK</div><div class="c t">HONEY</div><div class="c n">PLANE</div><div class="c n">DRUM</div><div class="c n">STAR</div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--blue-deep)"></i>ours</span>
+        <span><i style="background:rgba(242,140,56,.17);border:2px solid rgba(242,140,56,.6)"></i>theirs</span>
+        <span><i style="background:#1b2137;border:2px solid var(--line)"></i>neutral</span>
+        <span><i style="background:#000;border:2px solid var(--red)"></i>the bomb</span>
+        <span><i style="outline:3px solid var(--green);outline-offset:2px;background:transparent"></i>what the clue aims at</span>
+      </div>
+      <div class="under"><span class="tag">Concept visual</span></div>
+    </div>
+  </div>
+  <div class="footer"><span>Codebook · Graph Hacks 2026</span><span>04 / 12</span></div>
+</section>
+
+<!-- 5 · the idea -->
+<section class="slide" aria-label="Slide 5: What Codebook does">
+  <div class="label">04 · What Codebook does</div>
+  <h2>One shared memory, plus a private copy per partner.</h2>
+  <div class="idea">
+    <div class="bullets">
+      <p><span class="dot"></span>A <b>memory</b> is a graph: words linked by how strongly one brings the other to mind.</p>
+      <p><span class="dot"></span>Everyone's memory: <b>39k words and 497k links</b> in <b>FalkorDB</b>, a graph database.</p>
+      <p><span class="dot"></span>Each partner gets <b>a copy in 0.7 s</b>. Every guess makes its links stronger or weaker.</p>
+    </div>
+    <div class="diagram">
+      <div class="box" style="width:100%"><div class="t">Everyone's memory</div><div class="s">39k words · 497k weighted links</div></div>
+      <div class="arrow"><span>GRAPH.COPY · 0.7 s</span></div>
+      <div class="copies">
+        <div class="box"><div class="t">word2vec bot</div><div class="s">its own graph</div></div>
+        <div class="box"><div class="t">Claude</div><div class="s">its own graph</div></div>
+        <div class="box"><div class="t">you</div><div class="s">your own graph</div></div>
+      </div>
+      <div class="under" style="width:100%;margin-top:24px"><span class="tag">Concept visual</span></div>
+    </div>
+  </div>
+  <div class="footer"><span>Codebook · Graph Hacks 2026</span><span>05 / 12</span></div>
+</section>
+
+<!-- 6 · a turn -->
+<section class="slide" aria-label="Slide 6: Every turn">
+  <div class="label">05 · How a turn works</div>
+  <h2>Every turn: find, score, block, learn.</h2>
+  <div class="turn">
+    <div>
+      <div class="tstep"><span class="k blue">Find</span><p>Cypher, the graph query language, reads 4 kinds of link from each clue to the board.</p></div>
+      <div class="tstep"><span class="k blue">Score</span><p>Simulate this partner's picks; rank the clues.</p></div>
+      <div class="tstep"><span class="k red">Block</span><p>Refuse any clue whose chain of links reaches the bomb.</p></div>
+      <div class="tstep"><span class="k green">Learn</span><p>Re-weight this partner's links after each guess.</p></div>
+    </div>
+    <div>
+      <p class="cap">The live view, board 6030: the clue, a plain-English narration and the partner's memory in 3D</p>
+      <img class="shot" src="../img/live-view.png" alt="The live view on board 6030 with the word2vec bot's own memory">
+    </div>
+  </div>
+  <div class="footer"><span>Codebook · Graph Hacks 2026</span><span>06 / 12</span></div>
+</section>
+
+<!-- 7 · architecture -->
+<section class="slide" aria-label="Slide 7: Architecture">
+  <div class="label">06 · Architecture</div>
+  <h2 style="font-size:62px">Any agent plugs in. FalkorDB holds every memory.</h2>
+  <div class="arch">
+    <div class="doors" style="margin-top:44px">
+      <div class="door"><div class="t">Any AI agent</div><div class="s">6 MCP tools (MCP is the standard way AI agents call tools)</div></div>
+      <div class="door"><div class="t">Command line</div><div class="s">codebook setup · train · play · eval · ui</div></div>
+      <div class="door"><div class="t">Live view</div><div class="s">every Cypher query as it runs, and the 3D graph</div></div>
+    </div>
+    <div class="down">↓</div>
+    <div class="engine"><span class="t">Codebook engine</span><span class="s">scores every clue · blocks risky ones · learns from each guess</span></div>
+    <div class="down">↓</div>
+    <div class="falkor">
+      <div class="t">FalkorDB</div>
+      <div class="keys">
+        <div class="key"><div class="m">codebook:population</div><div class="s">everyone's memory, read-only</div></div>
+        <div class="key"><div class="m">codebook:partner:&lt;id&gt;</div><div class="s">one per partner, each locked to its own database user</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><span>Codebook · Graph Hacks 2026</span><span>07 / 12</span></div>
+</section>
+
+<!-- 8 · why falkordb -->
+<section class="slide" aria-label="Slide 8: Why FalkorDB">
+  <div class="label">07 · Why FalkorDB</div>
+  <h2>A memory per person is built in.</h2>
+  <div class="grid6">
+    <div class="tile"><div class="big">1 graph</div><p>per partner, each its own key</p></div>
+    <div class="tile"><div class="big">0.7 s</div><p>GRAPH.COPY makes a new partner's memory</p></div>
+    <div class="tile"><div class="big">1 user</div><p>per partner: database ACLs lock each graph to its owner</p></div>
+    <div class="tile"><div class="big">Milliseconds</div><p>Cypher traversals, every turn</p></div>
+    <div class="tile"><div class="big">11 MB</div><p>DUMP/RESTORE carries a memory to another server</p></div>
+    <div class="tile"><div class="big">Restart-proof</div><p>the same games replay with the same fingerprint</p></div>
+  </div>
+  <div class="banner">Remove FalkorDB and all 13 commands fail: there is no fallback store.</div>
+  <div class="footer"><span>Codebook · Graph Hacks 2026</span><span>08 / 12</span></div>
+</section>
+
+<!-- 9 · results -->
+<section class="slide" aria-label="Slide 9: Results">
+  <div class="label">08 · Results</div>
+  <h2 style="font-size:64px">3 of 4 promises kept, all written before testing.</h2>
+  <div class="results">
+    <div>
+      <div class="stat">
+        <div class="k">Bomb hits</div>
+        <div class="v"><span class="red">32%</span><span class="arrowr">→</span><span class="green">21%</span></div>
+        <p>word2vec bot, 200 boards it never saw: its own memory vs everyone's</p>
+      </div>
+      <div class="stat">
+        <div class="k">Turns to finish</div>
+        <div class="v">15.55<span class="arrowr">→</span><span class="green">14.39</span></div>
+        <p>lower is better; a lost game counts 25</p>
+      </div>
+    </div>
+    <div>
+      <div class="chart-title">The more games together, the better it plays</div>
+      <div class="chart-sub">word2vec bot · turns to finish on the same 200 boards</div>
+      <svg class="chart" width="780" height="430" viewBox="0 0 780 430" role="img" aria-label="Turns to finish after 0, 5, 10 and 20 practice games: 15.55, 14.81, 14.75, 14.39">
+        <g stroke="rgba(244,239,228,0.12)" stroke-width="1.5">
+          <line x1="96" y1="72" x2="750" y2="72"/><line x1="96" y1="150" x2="750" y2="150"/>
+          <line x1="96" y1="228" x2="750" y2="228"/><line x1="96" y1="306" x2="750" y2="306"/>
+        </g>
+        <line x1="96" y1="340" x2="750" y2="340" stroke="rgba(244,239,228,0.3)" stroke-width="2"/>
+        <g fill="#9AA3C7" font-size="22" text-anchor="end">
+          <text x="80" y="80">15.6</text><text x="80" y="158">15.2</text><text x="80" y="236">14.8</text><text x="80" y="314">14.4</text>
+        </g>
+        <g fill="#9AA3C7" font-size="22" text-anchor="middle">
+          <text x="110" y="376">0</text><text x="270" y="376">5</text><text x="430" y="376">10</text><text x="750" y="376">20</text>
+          <text x="430" y="418">practice games with this partner</text>
+        </g>
+        <polyline points="110,81 270,226 430,237 750,307" fill="none" stroke="#7EA2F2" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+        <g stroke="#070A16" stroke-width="3">
+          <circle cx="110" cy="81" r="9" fill="#7EA2F2"><title>0 games: 15.55 turns</title></circle>
+          <circle cx="270" cy="226" r="9" fill="#7EA2F2"><title>5 games: 14.81 turns</title></circle>
+          <circle cx="430" cy="237" r="9" fill="#7EA2F2"><title>10 games: 14.75 turns</title></circle>
+          <circle cx="750" cy="307" r="11" fill="#3DDC97"><title>20 games: 14.39 turns</title></circle>
+        </g>
+        <g fill="#F4EFE4" font-size="26">
+          <text x="128" y="70">15.55</text><text x="742" y="288" text-anchor="end">14.39</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+  <p class="honest">Not significant, and said plainly: the GloVe bot, and the handover to Claude Sonnet (bomb hits 40% → 22%, but only 40 boards).</p>
+  <div class="footer"><span>Codebook · Graph Hacks 2026</span><span>09 / 12</span></div>
+</section>
+
+<!-- 10 · coordination -->
+<section class="slide coord" aria-label="Slide 10: Shared memory between agents">
+  <div class="label">09 · Shared memory</div>
+  <h2>Another AI can use the memory, safely.</h2>
+  <p class="intro">Claude gives clues from the bot's memory through MCP tools, with no database password; risky clues are still blocked. You can play too, and your own memory appears.</p>
+  <div class="pair">
+    <div><p class="cap">What one partner's memory holds</p><img class="shot" src="../img/partner-memory.png" alt="The word2vec bot's memory: style weights, reweighted links and favourite words"></div>
+    <div><p class="cap">Same board, three memories, three clues</p><img class="shot" src="../img/compare-memories.png" alt="Board 6042 compared across three memories"></div>
+  </div>
+  <div class="footer"><span>Codebook · Graph Hacks 2026</span><span>10 / 12</span></div>
+</section>
+
+<!-- 11 · beyond -->
+<section class="slide" aria-label="Slide 11: Beyond the game">
+  <div class="label">10 · Why it matters</div>
+  <h2>Every agent that works with people needs a memory of each person.</h2>
+  <div class="uses">
+    <div class="use"><div class="t">Coding assistant</div><p>learns your team's shorthand</p><span class="chip">its own memory graph</span></div>
+    <div class="use"><div class="t">Support agent</div><p>remembers each customer</p><span class="chip">its own memory graph</span></div>
+    <div class="use"><div class="t">Tutor</div><p>adapts to every student</p><span class="chip">its own memory graph</span></div>
+  </div>
+  <div class="foot-tag"><span class="tag">Examples, not shipped integrations</span></div>
+  <div class="footer"><span>Codebook · Graph Hacks 2026</span><span>11 / 12</span></div>
+</section>
+
+<!-- 12 · try it -->
+<section class="slide" aria-label="Slide 12: Try it">
+  <div class="label">11 · Try it</div>
+  <h2>Try it yourself.</h2>
+  <div class="links" style="margin-top:40px">
+    <div><span class="k">Live demo</span><a href="https://codebook-755276882523.asia-south1.run.app">codebook-755276882523.asia-south1.run.app</a></div>
+    <div><span class="k">Code</span><a href="https://github.com/Rajendra465/graph-hack-sub">github.com/Rajendra465/graph-hack-sub</a></div>
+  </div>
+  <div class="code">git clone https://github.com/Rajendra465/graph-hack-sub.git && cd graph-hack-sub
+docker compose up -d                <span class="c2"># FalkorDB 6.0.2</span>
+uv sync --extra dev
+uv run codebook setup --source conceptnet --vectors
+uv run codebook ui                  <span class="c2"># http://127.0.0.1:7811</span></div>
+  <p class="limits">Limits, plainly: everyone's memory is built from ConceptNet 5.7, public word-association data. The partner model is small: 20 games find a habit, not every favourite word.</p>
+  <div class="footer"><span>Team Rubixx · Rajendra Sarpal</span><span>12 / 12</span></div>
+</section>
+
+<script>
+  // On screen, shrink the 1920px slides to fit the window; printing ignores this (zoom is screen-only).
+  (function fit() {
+    document.documentElement.style.setProperty("--fit", Math.min(1, (window.innerWidth - 24) / 1920));
+    window.addEventListener("resize", fit, { once: true });
+  })();
+</script>
+</body>
+</html>

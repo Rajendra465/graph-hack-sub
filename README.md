@@ -13,6 +13,8 @@ Graph Hacks 2026, **Track 02: Agent Memory and Coordination**.
 **Try it live: https://codebook-755276882523.asia-south1.run.app** (the live view on Google Cloud Run, with
 FalkorDB in the same container; see [Deployment](#deployment)).
 
+**Pitch deck:** [PDF](docs/Codebook-pitch-deck.pdf) · [HTML](docs/deck/index.html)
+
 > **Results: 3 of 4 pre-registered promises kept.** On 200 boards it never saw, a partner's own memory beat
 > everyone's memory and the wrong partner's memory for three of four partners (word2vec bot: bomb hits 32% → 21%).
 > GloVe gained nothing significant, and the handover to another AI pointed the right way but wasn't significant on
