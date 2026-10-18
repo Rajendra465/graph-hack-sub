@@ -1,6 +1,6 @@
 # One memory per partner: teaching an AI teammate how you think, with FalkorDB
 
-*Graph Hacks 2026, Track 02 (Agent Memory and Coordination). Code: [repo URL]*
+*Graph Hacks 2026, Track 02 (Agent Memory and Coordination). Code: https://github.com/Rajendra465/graph-hack-sub*
 
 Play a word game with a friend for a few evenings and something quiet happens: you stop giving clues the
 way "people" would and start giving them the way *your friend* would. You know they hear "ocean" and think

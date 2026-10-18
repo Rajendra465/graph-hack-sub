@@ -36,7 +36,7 @@ AI use: built with Claude Code as the coding assistant. The README's "AI use" se
 **Repository** (required)
 
 ```text
-[repo URL]
+https://github.com/Rajendra465/graph-hack-sub
 ```
 
 **Demo video** (required): YouTube, public or unlisted
@@ -49,7 +49,7 @@ AI use: built with Claude Code as the coding assistant. The README's "AI use" se
 instructions instead of a deployment, so point this field at them.
 
 ```text
-[repo URL]#try-it
+https://github.com/Rajendra465/graph-hack-sub#try-it
 ```
 
 **How did you use FalkorDB in your project?** (required): Tell us what technical problems you solved using

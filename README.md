@@ -178,7 +178,7 @@ partner's key, or running `GRAPH.LIST`.
 Needs Docker, [uv](https://docs.astral.sh/uv/) and Python 3.11 or 3.12.
 
 ```bash
-git clone [repo URL] && cd codebook
+git clone https://github.com/Rajendra465/graph-hack-sub.git && cd graph-hack-sub
 docker compose up -d                          # FalkorDB 6.0.2 on 127.0.0.1:6390, data in a volume
 uv sync --extra dev
 uv run codebook setup --source conceptnet --vectors   # downloads ConceptNet 5.7 (498 MB) and the bots' vectors

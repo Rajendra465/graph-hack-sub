@@ -16,7 +16,7 @@ runs its live view: watch a game, see every Cypher query FalkorDB runs, turn a p
 the guesser yourself.
 
 Graph Hacks 2026 (WeMakeDevs × FalkorDB), Track 02: Agent Memory and Coordination. Team Rubixx.
-Code, setup and results: [repo URL]
+Code, setup and results: https://github.com/Rajendra465/graph-hack-sub
 
 ## How this demo runs
 
